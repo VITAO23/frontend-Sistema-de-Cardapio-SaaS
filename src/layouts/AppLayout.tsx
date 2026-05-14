@@ -40,8 +40,8 @@ export default function AppLayout() {
         </header>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[220px_1fr]">
-          <nav className="flex flex-row gap-3 overflow-x-auto lg:flex-col">
-            <NavLink
+          <nav className="nav-adm flex flex-row gap-3 overflow-x-auto lg:flex-col">
+            <NavLink style={{ color: 'black' }}
               to="/dashboard"
               className={({ isActive }) =>
                 `${navLinkBase} ${
@@ -53,7 +53,7 @@ export default function AppLayout() {
             >
               Dashboard
             </NavLink>
-            <NavLink
+            <NavLink style={{ color: 'black' }}
               to="/categories"
               className={({ isActive }) =>
                 `${navLinkBase} ${
@@ -61,11 +61,12 @@ export default function AppLayout() {
                     ? 'bg-ink-900 text-white shadow-[0_14px_30px_rgba(22,32,45,0.3)]'
                     : 'bg-white/80 text-ink-600'
                 }`
+
               }
             >
               Categorias
             </NavLink>
-            <NavLink
+            <NavLink style={{ color: 'black' }}
               to="/products"
               className={({ isActive }) =>
                 `${navLinkBase} ${

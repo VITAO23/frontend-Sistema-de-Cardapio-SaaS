@@ -13,6 +13,11 @@ body {
   color: #16202d;
 }
 
+.nav-adm::before{
+  color: black;
+}
+
+
 @keyframes fadeIn {
   from {
     opacity: 0;
