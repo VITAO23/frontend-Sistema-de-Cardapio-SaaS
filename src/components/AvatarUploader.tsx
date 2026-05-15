@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type Props = {
   initialUrl?: string | null;
@@ -10,24 +10,49 @@ type Props = {
 export default function AvatarUploader({ initialUrl = null, onChange, label, inputId = 'avatar' }: Props) {
   const [preview, setPreview] = useState<string | null>(initialUrl);
   const [file, setFile] = useState<File | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    setPreview(initialUrl);
-  }, [initialUrl]);
+    if (!file) {
+      setPreview(initialUrl);
+    }
+  }, [initialUrl, file]);
 
   useEffect(() => {
-    onChange?.(file ?? null);
-  }, [file, onChange]);
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
+    };
+  }, []);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
+
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+
     setFile(f);
-    setPreview(f ? URL.createObjectURL(f) : initialUrl);
+    if (f) {
+      const nextUrl = URL.createObjectURL(f);
+      objectUrlRef.current = nextUrl;
+      setPreview(nextUrl);
+    } else {
+      setPreview(initialUrl);
+    }
+    onChange?.(f);
   }
 
   function handleRemove() {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
     setFile(null);
     setPreview(null);
+    onChange?.(null);
   }
 
   return (

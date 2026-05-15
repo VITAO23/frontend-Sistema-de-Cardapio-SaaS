@@ -11,9 +11,9 @@ const variantClasses = {
   primary:
     'bg-ink-900 text-white hover:bg-ink-800 disabled:bg-ink-600 shadow-[0_8px_20px_rgba(22,32,45,0.2)]',
   secondary:
-    'border border-ink-300 text-ink-600 hover:border-ink-400 hover:text-ink-900 hover:bg-ink-50',
+    'border border-ink-300 bg-white text-ink-700 hover:border-ink-400 hover:text-ink-900 hover:bg-ink-50',
   danger:
-    'border border-red-300 text-red-600 hover:border-red-400 hover:text-red-700 hover:bg-red-50',
+    'border border-red-300 bg-white text-red-600 hover:border-red-400 hover:text-red-700 hover:bg-red-50',
 };
 
 const sizeClasses = {
@@ -35,7 +35,7 @@ export default function Button({
     <button
       disabled={disabled || isLoading}
       className={`
-        relative rounded-xl font-semibold uppercase tracking-wide
+        relative select-none rounded-xl font-semibold uppercase tracking-wide
         transition-all duration-200 active:scale-95
         disabled:cursor-not-allowed disabled:opacity-60
         ${variantClasses[variant]}
