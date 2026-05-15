@@ -5,6 +5,7 @@ import DashboardPage from '../pages/Dashboard';
 import LoginPage from '../pages/Login';
 import ProductsPage from '../pages/Products';
 import ProfilePage from '../pages/Profile';
+import PublicMenuPage from '../pages/PublicMenu';
 import ProtectedRoute from './ProtectedRoute';
 import { useAuth } from '../hooks/useAuth';
 
@@ -13,6 +14,7 @@ export default function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/r/:slug" element={<PublicMenuPage />} />
       <Route
         path="/login"
         element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />}

@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 type Props = {
   initialUrl?: string | null;
   onChange?: (file: File | null) => void;
+  label?: string;
+  inputId?: string;
 };
 
-export default function AvatarUploader({ initialUrl = null, onChange }: Props) {
+export default function AvatarUploader({ initialUrl = null, onChange, label, inputId = 'avatar' }: Props) {
   const [preview, setPreview] = useState<string | null>(initialUrl);
   const [file, setFile] = useState<File | null>(null);
 
@@ -42,7 +44,12 @@ export default function AvatarUploader({ initialUrl = null, onChange }: Props) {
       </div>
 
       <div className="flex flex-col">
-        <input id="avatar" type="file" accept="image/*" onChange={handleFile} />
+        {label ? (
+          <label htmlFor={inputId} className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-500">
+            {label}
+          </label>
+        ) : null}
+        <input id={inputId} type="file" accept="image/*" onChange={handleFile} />
         <div className="mt-2 flex gap-2">
           <button type="button" className="rounded-xl border px-3 py-1 text-xs" onClick={handleRemove}>
             Remover

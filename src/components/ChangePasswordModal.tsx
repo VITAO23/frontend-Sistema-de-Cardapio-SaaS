@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +19,14 @@ const schema = z.object({
 });
 
 type Form = z.infer<typeof schema>;
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError(error)) {
+    return error.response?.data?.message ?? fallback;
+  }
+
+  return fallback;
+}
 
 export default function ChangePasswordModal({
   open,
@@ -45,8 +54,8 @@ export default function ChangePasswordModal({
       });
       setSuccess('Senha alterada com sucesso.');
       reset();
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Erro ao alterar senha.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao alterar senha.'));
     } finally {
       setLoading(false);
     }

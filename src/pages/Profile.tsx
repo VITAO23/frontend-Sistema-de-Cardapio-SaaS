@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +13,14 @@ const profileSchema = z.object({
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError(error)) {
+    return error.response?.data?.message ?? fallback;
+  }
+
+  return fallback;
+}
 
 export default function ProfilePage() {
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -89,8 +98,8 @@ export default function ProfilePage() {
       }
 
       setSuccess('Perfil atualizado com sucesso.');
-    } catch (err: any) {
-      setSubmitError(err?.response?.data?.message ?? 'Erro ao atualizar perfil.');
+    } catch (err: unknown) {
+      setSubmitError(getErrorMessage(err, 'Erro ao atualizar perfil.'));
     } finally {
       setLoading(false);
     }
@@ -121,8 +130,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-3">
-            <label className="block text-xs font-semibold uppercase tracking-wide text-ink-500">Avatar</label>
-            <AvatarUploader initialUrl={avatarPreview} onChange={onAvatarChange} />
+            <AvatarUploader initialUrl={avatarPreview} onChange={onAvatarChange} label="Avatar" />
             <p className="text-xs text-ink-500">Tamanho recomendado: 400x400px</p>
           </div>
         </form>
