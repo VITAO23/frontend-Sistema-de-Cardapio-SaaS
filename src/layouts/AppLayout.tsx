@@ -77,6 +77,19 @@ export default function AppLayout() {
             >
               Produtos
             </NavLink>
+            <NavLink
+              style={{ color: 'black' }}
+              to="/profile"
+              className={({ isActive }) =>
+                `${navLinkBase} ${
+                  isActive
+                    ? 'bg-ink-900 text-white shadow-[0_14px_30px_rgba(22,32,45,0.3)]'
+                    : 'bg-white/80 text-ink-600'
+                }`
+              }
+            >
+              Perfil
+            </NavLink>
           </nav>
 
           <main className="rounded-3xl border border-ink-200 bg-white/90 p-6 shadow-[0_22px_50px_rgba(31,41,55,0.08)] backdrop-blur">
