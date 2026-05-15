@@ -1,22 +1,22 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { Alert, Badge, Button, Input } from '../components'
-import { useAuth } from '../hooks/useAuth'
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Alert, Badge, Button, Input } from '../components';
+import { useAuth } from '../hooks/useAuth';
 
 const loginSchema = z.object({
   email: z.string().email('Informe um email válido.'),
   password: z.string().min(6, 'Informe uma senha com 6 caracteres.'),
-})
+});
 
-type LoginFormData = z.infer<typeof loginSchema>
+type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { login } = useAuth()
-  const navigate = useNavigate()
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -24,17 +24,17 @@ export default function LoginPage() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     mode: 'onSubmit',
-  })
+  });
 
   const onSubmit = async (data: LoginFormData) => {
-    setSubmitError(null)
+    setSubmitError(null);
     try {
-      await login(data)
-      navigate('/dashboard')
+      await login(data);
+      navigate('/dashboard');
     } catch {
-      setSubmitError('Não foi possível entrar. Verifique seus dados.')
+      setSubmitError('Não foi possível entrar. Verifique seus dados.');
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ink-50 via-white to-mint-50 text-ink-900">
@@ -46,8 +46,8 @@ export default function LoginPage() {
               Gerencie seu cardápio em minutos.
             </h1>
             <p className="max-w-xl text-base text-ink-600">
-              Controle categorias, produtos e imagens sem perder tempo. Comece
-              pelo login e valide toda a API agora mesmo.
+              Controle categorias, produtos e imagens sem perder tempo. Comece pelo login e valide
+              toda a API agora mesmo.
             </p>
             <div className="flex items-center gap-4 text-sm text-ink-500">
               <div className="h-px w-10 bg-ink-200" />
@@ -67,7 +67,7 @@ export default function LoginPage() {
               <Input
                 type="email"
                 label="Email"
-                placeholder="owner@restaurante-demo.com"
+                placeholder="victor@email.com"
                 autoComplete="email"
                 error={errors.email?.message}
                 {...register('email')}
@@ -82,28 +82,20 @@ export default function LoginPage() {
                 {...register('password')}
               />
 
-              {submitError ? (
-                <Alert type="error">{submitError}</Alert>
-              ) : null}
+              {submitError ? <Alert type="error">{submitError}</Alert> : null}
 
-              <Button
-                type="submit"
-                isLoading={isSubmitting}
-                className="w-full"
-              >
+              <Button type="submit" isLoading={isSubmitting} className="w-full">
                 Entrar
               </Button>
             </form>
 
             <div className="mt-6 rounded-2xl border border-ink-200 bg-ink-50 px-4 py-3 text-xs">
               <p className="font-semibold text-ink-700">Credenciais de demo:</p>
-              <p className="mt-1 font-mono text-ink-600">
-                owner@restaurante-demo.com / 123456
-              </p>
+              <p className="mt-1 font-mono text-ink-600">victor@email.com / 123456</p>
             </div>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

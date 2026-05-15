@@ -1,17 +1,16 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
-const navLinkBase =
-  'rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-ink-100'
+const navLinkBase = 'rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-ink-100';
 
 export default function AppLayout() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#f1fcf7,_#ffffff_55%,_#eef2f7)] text-ink-900">
@@ -21,9 +20,7 @@ export default function AppLayout() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">
               Sistema de Cardapio
             </p>
-            <h1 className="text-2xl font-semibold text-ink-900">
-              Painel administrativo
-            </h1>
+            <h1 className="text-2xl font-semibold text-ink-900">Painel administrativo</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="rounded-2xl border border-ink-200 bg-ink-50 px-4 py-2 text-xs text-ink-600">
@@ -41,7 +38,8 @@ export default function AppLayout() {
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[220px_1fr]">
           <nav className="nav-adm flex flex-row gap-3 overflow-x-auto lg:flex-col">
-            <NavLink style={{ color: 'black' }}
+            <NavLink
+              style={{ color: 'black' }}
               to="/dashboard"
               className={({ isActive }) =>
                 `${navLinkBase} ${
@@ -53,7 +51,8 @@ export default function AppLayout() {
             >
               Dashboard
             </NavLink>
-            <NavLink style={{ color: 'black' }}
+            <NavLink
+              style={{ color: 'black' }}
               to="/categories"
               className={({ isActive }) =>
                 `${navLinkBase} ${
@@ -61,12 +60,12 @@ export default function AppLayout() {
                     ? 'bg-ink-900 text-white shadow-[0_14px_30px_rgba(22,32,45,0.3)]'
                     : 'bg-white/80 text-ink-600'
                 }`
-
               }
             >
               Categorias
             </NavLink>
-            <NavLink style={{ color: 'black' }}
+            <NavLink
+              style={{ color: 'black' }}
               to="/products"
               className={({ isActive }) =>
                 `${navLinkBase} ${
@@ -86,5 +85,5 @@ export default function AppLayout() {
         </div>
       </div>
     </div>
-  )
+  );
 }

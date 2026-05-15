@@ -1,8 +1,8 @@
-import { useAuth } from '../hooks/useAuth'
-import { Badge, Card, Section } from '../components'
+import { useAuth } from '../hooks/useAuth';
+import { Badge, Card, Section } from '../components';
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
   return (
     <Section
@@ -16,12 +16,8 @@ export default function DashboardPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">
                 Status
               </p>
-              <p className="mt-2 text-2xl font-bold text-ink-900">
-                API conectada
-              </p>
-              <p className="mt-1 text-sm text-ink-600">
-                Login validado com sucesso.
-              </p>
+              <p className="mt-2 text-2xl font-bold text-ink-900">API conectada</p>
+              <p className="mt-1 text-sm text-ink-600">Login validado com sucesso.</p>
             </div>
             <Badge variant="success">✓</Badge>
           </div>
@@ -33,12 +29,8 @@ export default function DashboardPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">
                 Próximo passo
               </p>
-              <p className="mt-2 text-2xl font-bold text-ink-900">
-                Categorias
-              </p>
-              <p className="mt-1 text-sm text-ink-600">
-                Cadastre as seções do menu.
-              </p>
+              <p className="mt-2 text-2xl font-bold text-ink-900">Categorias</p>
+              <p className="mt-1 text-sm text-ink-600">Cadastre as seções do menu.</p>
             </div>
             <Badge variant="warning">→</Badge>
           </div>
@@ -47,15 +39,9 @@ export default function DashboardPage() {
         <Card className="p-6">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">
-                Dica
-              </p>
-              <p className="mt-2 text-2xl font-bold text-ink-900">
-                Imagens
-              </p>
-              <p className="mt-1 text-sm text-ink-600">
-                Prepare fotos leves e quadradas.
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Dica</p>
+              <p className="mt-2 text-2xl font-bold text-ink-900">Imagens</p>
+              <p className="mt-1 text-sm text-ink-600">Prepare fotos leves e quadradas.</p>
             </div>
             <Badge variant="default">💡</Badge>
           </div>
@@ -80,5 +66,5 @@ export default function DashboardPage() {
         </div>
       </Card>
     </Section>
-  )
+  );
 }

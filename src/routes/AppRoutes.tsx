@@ -1,22 +1,20 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
-import AppLayout from '../layouts/AppLayout'
-import CategoriesPage from '../pages/Categories'
-import DashboardPage from '../pages/Dashboard'
-import LoginPage from '../pages/Login'
-import ProductsPage from '../pages/Products'
-import ProtectedRoute from './ProtectedRoute'
-import { useAuth } from '../hooks/useAuth'
+import { Navigate, Route, Routes } from 'react-router-dom';
+import AppLayout from '../layouts/AppLayout';
+import CategoriesPage from '../pages/Categories';
+import DashboardPage from '../pages/Dashboard';
+import LoginPage from '../pages/Login';
+import ProductsPage from '../pages/Products';
+import ProtectedRoute from './ProtectedRoute';
+import { useAuth } from '../hooks/useAuth';
 
 export default function AppRoutes() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAuth();
 
   return (
     <Routes>
       <Route
         path="/login"
-        element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />
-        }
+        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />}
       />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
@@ -27,5 +25,5 @@ export default function AppRoutes() {
         </Route>
       </Route>
     </Routes>
-  )
+  );
 }

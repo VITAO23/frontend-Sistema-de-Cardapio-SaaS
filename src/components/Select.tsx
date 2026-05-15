@@ -1,10 +1,10 @@
-import type { SelectHTMLAttributes } from 'react'
+import type { SelectHTMLAttributes } from 'react';
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string
-  error?: string
-  options: Array<{ value: string; label: string }>
-  placeholder?: string
+  label?: string;
+  error?: string;
+  options: Array<{ value: string; label: string }>;
+  placeholder?: string;
 }
 
 export default function Select({
@@ -34,18 +34,14 @@ export default function Select({
         `}
         {...props}
       >
-        {placeholder ? (
-          <option value="">{placeholder}</option>
-        ) : null}
+        {placeholder ? <option value="">{placeholder}</option> : null}
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>
         ))}
       </select>
-      {error ? (
-        <p className="text-xs text-red-600">{error}</p>
-      ) : null}
+      {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </div>
-  )
+  );
 }

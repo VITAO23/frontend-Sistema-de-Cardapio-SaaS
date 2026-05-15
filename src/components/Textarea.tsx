@@ -1,16 +1,11 @@
-import type { TextareaHTMLAttributes } from 'react'
+import type { TextareaHTMLAttributes } from 'react';
 
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label?: string
-  error?: string
+  label?: string;
+  error?: string;
 }
 
-export default function Textarea({
-  label,
-  error,
-  className,
-  ...props
-}: TextareaProps) {
+export default function Textarea({ label, error, className, ...props }: TextareaProps) {
   return (
     <div className="space-y-1">
       {label ? (
@@ -32,9 +27,7 @@ export default function Textarea({
         `}
         {...props}
       />
-      {error ? (
-        <p className="text-xs text-red-600">{error}</p>
-      ) : null}
+      {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </div>
-  )
+  );
 }

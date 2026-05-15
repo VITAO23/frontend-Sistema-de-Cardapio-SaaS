@@ -1,66 +1,57 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { ChangeEvent } from 'react'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Input,
-  Section,
-  Select,
-  Textarea,
-} from '../components'
-import { api } from '../services/api'
+import { useEffect, useMemo, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Alert, Badge, Button, Card, Input, Section, Select, Textarea } from '../components';
+import { api } from '../services/api';
 
 type Category = {
-  id: string
-  name: string
-}
+  id: string;
+  name: string;
+};
 
 type Product = {
-  id: string
-  name: string
-  description?: string | null
-  price: number | string
-  imageUrl?: string | null
-  categoryId?: string | null
-  category?: Category | null
-}
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number | string;
+  imageUrl?: string | null;
+  categoryId?: string | null;
+  category?: Category | null;
+};
 
 const productSchema = z.object({
   name: z.string().min(2, 'Informe o nome do produto.'),
   description: z.string().optional(),
   price: z.string().min(1, 'Informe o valor do produto.'),
   categoryId: z.string().min(1, 'Selecione uma categoria.'),
-})
+});
 
-type ProductFormData = z.infer<typeof productSchema>
+type ProductFormData = z.infer<typeof productSchema>;
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333'
-const imageBaseUrl = API_URL.replace(/\/$/, '')
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+const imageBaseUrl = API_URL.replace(/\/$/, '');
 
 function normalizeList<T>(payload: T[] | { [key: string]: T[] } | unknown, key: string) {
   if (Array.isArray(payload)) {
-    return payload
+    return payload;
   }
 
   if (payload && typeof payload === 'object' && key in payload) {
-    return (payload as { [key: string]: T[] })[key] ?? []
+    return (payload as { [key: string]: T[] })[key] ?? [];
   }
 
-  return []
+  return [];
 }
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const {
     register,
     handleSubmit,
@@ -75,114 +66,114 @@ export default function ProductsPage() {
       price: '',
       categoryId: '',
     },
-  })
+  });
 
   const editingProduct = useMemo(
     () => products.find((product) => product.id === editingId) || null,
     [editingId, products],
-  )
+  );
 
   const loadData = async () => {
-    setLoading(true)
+    setLoading(true);
 
     try {
       const [productsResponse, categoriesResponse] = await Promise.all([
         api.get('/products'),
         api.get('/categories'),
-      ])
+      ]);
 
-      setProducts(normalizeList<Product>(productsResponse.data, 'products'))
-      setCategories(normalizeList<Category>(categoriesResponse.data, 'categories'))
+      setProducts(normalizeList<Product>(productsResponse.data, 'products'));
+      setCategories(normalizeList<Category>(categoriesResponse.data, 'categories'));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    void loadData()
-  }, [])
+    void loadData();
+  }, []);
 
   useEffect(() => {
     if (editingProduct) {
-      setValue('name', editingProduct.name)
-      setValue('description', editingProduct.description ?? '')
-      setValue('price', String(editingProduct.price ?? ''))
-      setValue('categoryId', editingProduct.categoryId ?? editingProduct.category?.id ?? '')
+      setValue('name', editingProduct.name);
+      setValue('description', editingProduct.description ?? '');
+      setValue('price', String(editingProduct.price ?? ''));
+      setValue('categoryId', editingProduct.categoryId ?? editingProduct.category?.id ?? '');
     }
-  }, [editingProduct, setValue])
+  }, [editingProduct, setValue]);
 
   const onSubmit = async (data: ProductFormData) => {
-    setSubmitError(null)
+    setSubmitError(null);
 
     try {
-      const formData = new FormData()
-      formData.append('name', data.name)
-      formData.append('price', data.price)
-      formData.append('categoryId', data.categoryId)
+      const formData = new FormData();
+      formData.append('name', data.name);
+      formData.append('price', data.price);
+      formData.append('categoryId', data.categoryId);
 
       if (data.description) {
-        formData.append('description', data.description)
+        formData.append('description', data.description);
       }
 
       if (selectedFile) {
-        formData.append('image', selectedFile)
+        formData.append('image', selectedFile);
       }
 
       if (editingId) {
         await api.put(`/products/${editingId}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
-        })
+        });
       } else {
         await api.post('/products', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
-        })
+        });
       }
 
-      reset()
-      setSelectedFile(null)
-      setEditingId(null)
-      await loadData()
+      reset();
+      setSelectedFile(null);
+      setEditingId(null);
+      await loadData();
     } catch {
-      setSubmitError('Nao foi possivel salvar o produto.')
+      setSubmitError('Nao foi possivel salvar o produto.');
     }
-  }
+  };
 
   const startEdit = (product: Product) => {
-    setEditingId(product.id)
-    setValue('name', product.name)
-    setValue('description', product.description ?? '')
-    setValue('price', String(product.price ?? ''))
-    setValue('categoryId', product.categoryId ?? product.category?.id ?? '')
-    setSelectedFile(null)
-  }
+    setEditingId(product.id);
+    setValue('name', product.name);
+    setValue('description', product.description ?? '');
+    setValue('price', String(product.price ?? ''));
+    setValue('categoryId', product.categoryId ?? product.category?.id ?? '');
+    setSelectedFile(null);
+  };
 
   const cancelEdit = () => {
-    setEditingId(null)
-    setSelectedFile(null)
-    reset()
-  }
+    setEditingId(null);
+    setSelectedFile(null);
+    reset();
+  };
 
   const handleDelete = async (productId: string) => {
-    setSubmitError(null)
+    setSubmitError(null);
 
     try {
-      await api.delete(`/products/${productId}`)
-      await loadData()
+      await api.delete(`/products/${productId}`);
+      await loadData();
     } catch {
-      setSubmitError('Nao foi possivel excluir o produto.')
+      setSubmitError('Nao foi possivel excluir o produto.');
     }
-  }
+  };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSelectedFile(event.target.files?.[0] ?? null)
-  }
+    setSelectedFile(event.target.files?.[0] ?? null);
+  };
 
-  const previewSource = selectedFile ? URL.createObjectURL(selectedFile) : null
+  const previewSource = selectedFile ? URL.createObjectURL(selectedFile) : null;
 
   const categoryOptions = categories.map((cat) => ({
     value: cat.id,
     label: cat.name,
-  }))
+  }));
 
   return (
     <Section
@@ -206,10 +197,7 @@ export default function ProductsPage() {
           ) : null}
         </div>
 
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="space-y-4"
-        >
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
               <Input
@@ -248,18 +236,20 @@ export default function ProductsPage() {
             />
 
             <div className="space-y-1 md:col-span-2">
-              <label className="block text-xs font-semibold uppercase tracking-wide text-ink-500">
+              <label
+                htmlFor="product-image"
+                className="block text-xs font-semibold uppercase tracking-wide text-ink-500"
+              >
                 Imagem
               </label>
               <input
+                id="product-image"
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
                 className="w-full rounded-xl border border-dashed border-ink-300 bg-white px-4 py-3 text-sm text-ink-600 file:mr-4 file:rounded-lg file:border-0 file:bg-ink-900 file:px-4 file:py-2 file:text-xs file:font-semibold file:uppercase file:text-white"
               />
-              <p className="text-xs text-ink-500">
-                Enviado como multipart/form-data
-              </p>
+              <p className="text-xs text-ink-500">Enviado como multipart/form-data</p>
             </div>
           </div>
 
@@ -279,16 +269,10 @@ export default function ProductsPage() {
 
       <div className="grid gap-4 md:grid-cols-[160px_1fr]">
         <Card className="flex flex-col items-center justify-center p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">
-            Preview
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Preview</p>
           <div className="mt-3 aspect-square w-full overflow-hidden rounded-xl bg-ink-100">
             {previewSource ? (
-              <img
-                src={previewSource}
-                alt="Preview"
-                className="h-full w-full object-cover"
-              />
+              <img src={previewSource} alt="Preview" className="h-full w-full object-cover" />
             ) : editingProduct?.imageUrl ? (
               <img
                 src={`${imageBaseUrl}/${editingProduct.imageUrl.replace(/^\//, '')}`}
@@ -306,10 +290,12 @@ export default function ProductsPage() {
           <p className="font-semibold text-ink-900">Fluxo de upload</p>
           <p className="mt-2 text-sm text-ink-600">
             O backend recebe: <strong>name</strong>, <strong>description</strong>,
-            <strong> price</strong>, <strong>categoryId</strong> e <strong>image</strong> (multipart).
+            <strong> price</strong>, <strong>categoryId</strong> e <strong>image</strong>{' '}
+            (multipart).
           </p>
           <p className="mt-3 text-xs text-mint-700">
-            ✓ Imagens servidas estaticamente em <code className="bg-ink-100 px-2 py-1">/uploads</code>
+            ✓ Imagens servidas estaticamente em{' '}
+            <code className="bg-ink-100 px-2 py-1">/uploads</code>
           </p>
         </Card>
       </div>
@@ -352,9 +338,7 @@ export default function ProductsPage() {
                     <Badge variant="default" size="sm">
                       {product.category?.name || 'Sem categoria'}
                     </Badge>
-                    <h4 className="mt-2 font-semibold text-ink-900">
-                      {product.name}
-                    </h4>
+                    <h4 className="mt-2 font-semibold text-ink-900">{product.name}</h4>
                     {product.description ? (
                       <p className="mt-1 line-clamp-2 text-xs text-ink-600">
                         {product.description}
@@ -369,18 +353,10 @@ export default function ProductsPage() {
                       })}
                     </span>
                     <div className="flex gap-1">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => startEdit(product)}
-                      >
+                      <Button variant="secondary" size="sm" onClick={() => startEdit(product)}>
                         Editar
                       </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDelete(product.id)}
-                      >
+                      <Button variant="danger" size="sm" onClick={() => handleDelete(product.id)}>
                         Excluir
                       </Button>
                     </div>
@@ -392,5 +368,5 @@ export default function ProductsPage() {
         )}
       </div>
     </Section>
-  )
+  );
 }

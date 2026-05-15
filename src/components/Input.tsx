@@ -1,18 +1,12 @@
-import type { InputHTMLAttributes } from 'react'
+import type { InputHTMLAttributes } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string
-  error?: string
-  helperText?: string
+  label?: string;
+  error?: string;
+  helperText?: string;
 }
 
-export default function Input({
-  label,
-  error,
-  helperText,
-  className,
-  ...props
-}: InputProps) {
+export default function Input({ label, error, helperText, className, ...props }: InputProps) {
   return (
     <div className="space-y-1">
       {label ? (
@@ -39,5 +33,5 @@ export default function Input({
         <p className="text-xs text-ink-500">{helperText}</p>
       ) : null}
     </div>
-  )
+  );
 }

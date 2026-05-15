@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @source "../**/*.{js,ts,jsx,tsx}";
 @source "../../index.html";
 
@@ -13,10 +13,9 @@ body {
   color: #16202d;
 }
 
-.nav-adm::before{
+.nav-adm::before {
   color: black;
 }
-
 
 @keyframes fadeIn {
   from {

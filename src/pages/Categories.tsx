@@ -1,26 +1,26 @@
-import { useEffect, useState } from 'react'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { Alert, Badge, Button, Card, Input, Section } from '../components'
-import { api } from '../services/api'
+import { useEffect, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Alert, Badge, Button, Card, Input, Section } from '../components';
+import { api } from '../services/api';
 
 const categorySchema = z.object({
   name: z.string().min(2, 'Informe o nome da categoria.'),
-})
+});
 
-type CategoryFormData = z.infer<typeof categorySchema>
+type CategoryFormData = z.infer<typeof categorySchema>;
 
 type Category = {
-  id: string
-  name: string
-}
+  id: string;
+  name: string;
+};
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -29,59 +29,59 @@ export default function CategoriesPage() {
     formState: { errors, isSubmitting },
   } = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
-  })
+  });
 
   const loadCategories = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await api.get('/categories')
-      const data = response.data as { categories?: Category[] } | Category[]
-      const list = Array.isArray(data) ? data : data.categories ?? []
-      setCategories(list)
+      const response = await api.get('/categories');
+      const data = response.data as { categories?: Category[] } | Category[];
+      const list = Array.isArray(data) ? data : data.categories ?? [];
+      setCategories(list);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    void loadCategories()
-  }, [])
+    void loadCategories();
+  }, []);
 
   const onSubmit = async (data: CategoryFormData) => {
-    setSubmitError(null)
+    setSubmitError(null);
     try {
       if (editingId) {
-        await api.put(`/categories/${editingId}`, data)
+        await api.put(`/categories/${editingId}`, data);
       } else {
-        await api.post('/categories', data)
+        await api.post('/categories', data);
       }
-      reset()
-      setEditingId(null)
-      await loadCategories()
+      reset();
+      setEditingId(null);
+      await loadCategories();
     } catch {
-      setSubmitError('Não foi possível salvar a categoria.')
+      setSubmitError('Não foi possível salvar a categoria.');
     }
-  }
+  };
 
   const startEdit = (category: Category) => {
-    setEditingId(category.id)
-    setValue('name', category.name)
-  }
+    setEditingId(category.id);
+    setValue('name', category.name);
+  };
 
   const cancelEdit = () => {
-    setEditingId(null)
-    reset()
-  }
+    setEditingId(null);
+    reset();
+  };
 
   const handleDelete = async (categoryId: string) => {
-    setSubmitError(null)
+    setSubmitError(null);
     try {
-      await api.delete(`/categories/${categoryId}`)
-      await loadCategories()
+      await api.delete(`/categories/${categoryId}`);
+      await loadCategories();
     } catch {
-      setSubmitError('Não foi possível excluir a categoria.')
+      setSubmitError('Não foi possível excluir a categoria.');
     }
-  }
+  };
 
   return (
     <Section
@@ -91,13 +91,9 @@ export default function CategoriesPage() {
       <Card className="border-ink-100 bg-gradient-to-br from-ink-50 to-white p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <Badge variant="default">
-              {editingId ? 'Editando' : 'Nova categoria'}
-            </Badge>
+            <Badge variant="default">{editingId ? 'Editando' : 'Nova categoria'}</Badge>
             <h3 className="mt-3 text-xl font-bold text-ink-900">
-              {editingId
-                ? 'Atualize o nome abaixo'
-                : 'Crie uma categoria rapidamente'}
+              {editingId ? 'Atualize o nome abaixo' : 'Crie uma categoria rapidamente'}
             </h3>
           </div>
           {editingId ? (
@@ -121,11 +117,7 @@ export default function CategoriesPage() {
             </Alert>
           ) : null}
 
-          <Button
-            type="submit"
-            isLoading={isSubmitting}
-            className="w-full"
-          >
+          <Button type="submit" isLoading={isSubmitting} className="w-full">
             {editingId ? 'Atualizar categoria' : 'Criar categoria'}
           </Button>
         </form>
@@ -133,9 +125,7 @@ export default function CategoriesPage() {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-ink-900">
-            Categorias cadastradas
-          </h3>
+          <h3 className="text-lg font-semibold text-ink-900">Categorias cadastradas</h3>
           <Badge variant="success">{categories.length}</Badge>
         </div>
 
@@ -187,5 +177,5 @@ export default function CategoriesPage() {
         )}
       </div>
     </Section>
-  )
+  );
 }

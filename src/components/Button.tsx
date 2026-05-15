@@ -1,10 +1,10 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger'
-  size?: 'sm' | 'md' | 'lg'
-  isLoading?: boolean
-  children: ReactNode
+  variant?: 'primary' | 'secondary' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  isLoading?: boolean;
+  children: ReactNode;
 }
 
 const variantClasses = {
@@ -14,13 +14,13 @@ const variantClasses = {
     'border border-ink-300 text-ink-600 hover:border-ink-400 hover:text-ink-900 hover:bg-ink-50',
   danger:
     'border border-red-300 text-red-600 hover:border-red-400 hover:text-red-700 hover:bg-red-50',
-}
+};
 
 const sizeClasses = {
   sm: 'px-4 py-2 text-xs',
   md: 'px-5 py-2.5 text-sm',
   lg: 'px-6 py-3 text-base',
-}
+};
 
 export default function Button({
   variant = 'primary',
@@ -53,5 +53,5 @@ export default function Button({
         children
       )}
     </button>
-  )
+  );
 }
