@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
+import QRCode from 'qrcode';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,9 +11,19 @@ import ChangePasswordModal from '../components/ChangePasswordModal';
 const profileSchema = z.object({
   name: z.string().min(2, 'Informe seu nome.'),
   email: z.string().email('Email inválido.'),
+  address: z.string().optional(),
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+
+function resolveMediaUrl(url?: string | null) {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+
+  return `${API_URL.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
@@ -30,6 +41,9 @@ export default function ProfilePage() {
   const [logoSyncWarning, setLogoSyncWarning] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [slug, setSlug] = useState('');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const { register, handleSubmit, setValue } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -43,12 +57,16 @@ export default function ProfilePage() {
         const user = res.data;
         setValue('name', user.name ?? '');
         setValue('email', user.email ?? '');
-        if (user.avatarUrl) setAvatarPreview(user.avatarUrl);
+        setValue('address', user.address ?? '');
+        if (user.avatarUrl) setAvatarPreview(resolveMediaUrl(user.avatarUrl));
 
         try {
           const restaurantRes = await api.get('/restaurants/me');
           if (restaurantRes.data?.logoUrl) {
-            setAvatarPreview(restaurantRes.data.logoUrl);
+            setAvatarPreview(resolveMediaUrl(restaurantRes.data.logoUrl));
+          }
+          if (restaurantRes.data?.slug) {
+            setSlug(restaurantRes.data.slug);
           }
         } catch {
           // Restaurant logo endpoint may be unavailable for some accounts.
@@ -61,10 +79,68 @@ export default function ProfilePage() {
     })();
   }, [setValue]);
 
-  // avatar handled by AvatarUploader
+  useEffect(() => {
+    if (!slug || typeof window === 'undefined') {
+      setQrCodeDataUrl(null);
+      return;
+    }
+
+    const publicMenuUrl = `${window.location.origin}/r/${slug}`;
+    void QRCode.toDataURL(publicMenuUrl, {
+      width: 512,
+      margin: 1,
+    })
+      .then((dataUrl: string) => setQrCodeDataUrl(dataUrl))
+      .catch(() => setQrCodeDataUrl(null));
+  }, [slug]);
+
   const onAvatarChange = useCallback((f: File | null) => {
     setAvatarFile(f);
   }, []);
+
+  const publicMenuUrl = slug ? `${typeof window !== 'undefined' ? window.location.origin : ''}/r/${slug}` : '';
+
+  const handleDownloadQr = () => {
+    if (!qrCodeDataUrl) return;
+
+    const link = document.createElement('a');
+    link.href = qrCodeDataUrl;
+    link.download = `qrcode-cardapio-${slug || 'restaurante'}.png`;
+    link.click();
+  };
+
+  const handlePrintQr = () => {
+    if (!qrCodeDataUrl || !publicMenuUrl) return;
+
+    const printWindow = window.open('', '_blank', 'width=720,height=720');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head><title>QR Code Cardápio</title></head>
+        <body style="font-family: sans-serif; text-align: center; padding: 24px;">
+          <h2>QR Code do Cardápio</h2>
+          <p>${publicMenuUrl}</p>
+          <img src="${qrCodeDataUrl}" alt="QR Code do cardápio" style="width: 320px; height: 320px;" />
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
+  const handleCopyLink = async () => {
+    if (!publicMenuUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(publicMenuUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   async function processImageToJpeg(file: File, size = 400) {
     return new Promise<Blob | null>((resolve) => {
@@ -134,30 +210,84 @@ export default function ProfilePage() {
         {logoSyncWarning && <Alert type="warning">{logoSyncWarning}</Alert>}
         {success && <Alert type="success">{success}</Alert>}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2">
             <Input label="Nome" {...register('name')} />
             <Input label="Email" type="email" {...register('email')} />
-            <div className="flex items-center gap-3">
-              <Button type="submit" isLoading={loading}>
-                Salvar
-              </Button>
-              <button
-                type="button"
-                onClick={() => setPasswordOpen(true)}
-                className="rounded-xl border border-ink-300 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-ink-600"
-              >
-                Alterar senha
-              </button>
+          </div>
+
+          <div>
+            <Input
+              label="Endereço da empresa"
+              placeholder="Ex: Rua das Flores, 123 - Bairro, Cidade"
+              {...register('address')}
+            />
+            <p className="mt-1 text-xs text-ink-500">
+              Este endereço será exibido no cardápio público
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <AvatarUploader initialUrl={avatarPreview} onChange={onAvatarChange} label="Logo da loja" inputId="store-logo" />
+              <p className="mt-2 text-xs text-ink-500">Tamanho recomendado: 400x400px</p>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <AvatarUploader initialUrl={avatarPreview} onChange={onAvatarChange} label="Logo da loja" inputId="store-logo" />
-            <p className="text-xs text-ink-500">Tamanho recomendado: 400x400px. Esta imagem será usada no admin e no cardápio público.</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button type="submit" isLoading={loading}>
+              Salvar
+            </Button>
+            <button
+              type="button"
+              onClick={() => setPasswordOpen(true)}
+              className="rounded-xl border border-ink-300 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-ink-600"
+            >
+              Alterar senha
+            </button>
           </div>
         </form>
       </Card>
+
+      <Card className="p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="w-full space-y-3 lg:max-w-xl">
+            <h3 className="text-lg font-semibold text-ink-900">QR Code do Cardápio</h3>
+            <p className="text-sm text-ink-600">
+              Compartilhe este QR code com seus clientes para eles acessarem o cardápio online.
+            </p>
+
+            <div className="rounded-xl border border-ink-200 bg-ink-50 px-4 py-3 text-sm text-ink-700">
+              {publicMenuUrl || 'Gerando link...'}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={handleCopyLink} disabled={!publicMenuUrl}>
+                {copied ? 'Link copiado' : 'Copiar link'}
+              </Button>
+              <Button variant="secondary" onClick={handleDownloadQr} disabled={!qrCodeDataUrl}>
+                Baixar QR (PNG)
+              </Button>
+              <Button variant="secondary" onClick={handlePrintQr} disabled={!qrCodeDataUrl}>
+                Imprimir QR
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex w-full justify-center lg:w-auto lg:justify-end">
+            <div className="rounded-2xl border border-ink-200 bg-white p-4 shadow-sm">
+              {qrCodeDataUrl ? (
+                <img src={qrCodeDataUrl} alt="QR Code do cardápio" className="h-48 w-48" />
+              ) : (
+                <div className="flex h-48 w-48 items-center justify-center text-sm text-ink-500">
+                  Gerando QR Code...
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Card>
+
       <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     </Section>
   );

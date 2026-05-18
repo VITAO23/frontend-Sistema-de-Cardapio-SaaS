@@ -270,21 +270,21 @@ export default function ProductsPage() {
       <div className="grid gap-4 md:grid-cols-[160px_1fr]">
         <Card className="flex flex-col items-center justify-center p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Preview</p>
-          <div className="mt-3 aspect-square w-full overflow-hidden rounded-xl bg-ink-100">
-            {previewSource ? (
-              <img src={previewSource} alt="Preview" className="h-full w-full object-cover" />
-            ) : editingProduct?.imageUrl ? (
-              <img
-                src={`${imageBaseUrl}/${editingProduct.imageUrl.replace(/^\//, '')}`}
-                alt={editingProduct.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-xs text-ink-500">
-                Sem imagem
-              </div>
-            )}
-          </div>
+          {previewSource || editingProduct?.imageUrl ? (
+            <div className="mt-3 aspect-square w-full overflow-hidden rounded-xl bg-ink-100">
+              {previewSource ? (
+                <img src={previewSource} alt="Preview" className="h-full w-full object-cover" />
+              ) : editingProduct?.imageUrl ? (
+                <img
+                  src={`${imageBaseUrl}/${editingProduct.imageUrl.replace(/^\//, '')}`}
+                  alt={editingProduct.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-ink-500">Sem imagem</p>
+          )}
         </Card>
         <Card className="p-4">
           <p className="font-semibold text-ink-900">Fluxo de upload</p>
@@ -320,19 +320,15 @@ export default function ProductsPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
               <Card key={product.id} className="overflow-hidden">
-                <div className="aspect-[4/3] bg-ink-100">
-                  {product.imageUrl ? (
+                {product.imageUrl ? (
+                  <div className="aspect-[4/3] bg-ink-100">
                     <img
                       src={`${imageBaseUrl}/${product.imageUrl.replace(/^\//, '')}`}
                       alt={product.name}
                       className="h-full w-full object-cover"
                     />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-ink-500">
-                      Sem imagem
-                    </div>
-                  )}
-                </div>
+                  </div>
+                ) : null}
                 <div className="space-y-3 p-4">
                   <div>
                     <Badge variant="default" size="sm">

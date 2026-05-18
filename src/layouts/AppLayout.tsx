@@ -39,7 +39,6 @@ export default function AppLayout() {
         <div className="mt-8 grid gap-6 lg:grid-cols-[220px_1fr]">
           <nav className="nav-adm flex flex-row gap-3 overflow-x-auto lg:flex-col">
             <NavLink
-              style={{ color: 'black' }}
               to="/dashboard"
               className={({ isActive }) =>
                 `${navLinkBase} ${
@@ -52,7 +51,6 @@ export default function AppLayout() {
               Dashboard
             </NavLink>
             <NavLink
-              style={{ color: 'black' }}
               to="/categories"
               className={({ isActive }) =>
                 `${navLinkBase} ${
@@ -65,7 +63,6 @@ export default function AppLayout() {
               Categorias
             </NavLink>
             <NavLink
-              style={{ color: 'black' }}
               to="/products"
               className={({ isActive }) =>
                 `${navLinkBase} ${
@@ -78,7 +75,6 @@ export default function AppLayout() {
               Produtos
             </NavLink>
             <NavLink
-              style={{ color: 'black' }}
               to="/profile"
               className={({ isActive }) =>
                 `${navLinkBase} ${

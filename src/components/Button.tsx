@@ -47,10 +47,10 @@ export default function Button({
       {isLoading ? (
         <span className="inline-flex items-center gap-2">
           <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
-          Carregando...
+          <span className="relative z-10">Carregando...</span>
         </span>
       ) : (
-        children
+        <span className="relative z-10">{children}</span>
       )}
     </button>
   );
