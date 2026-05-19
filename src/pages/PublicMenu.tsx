@@ -75,6 +75,13 @@ export default function PublicMenu() {
   const [isDemo, setIsDemo] = useState(false);
   const [cart, setCart] = useState<Array<{ product: Product; qty: number }>>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerNeighborhood, setCustomerNeighborhood] = useState('');
+  const [customerComplement, setCustomerComplement] = useState('');
+  const [customerReference, setCustomerReference] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Pagamento no cartão');
   const [activeCategoryId, setActiveCategoryId] = useState('');
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -149,9 +156,61 @@ export default function PublicMenu() {
     if (!restaurant) return;
 
     const phone = restaurant.whatsapp?.replace(/[^0-9]/g, '') || '';
-    const lines = [`Pedido para ${restaurant.name}`];
-    cart.forEach((item) => lines.push(`${item.qty}x ${item.product.name} - R$ ${formatPrice(item.product.price)}`));
-    lines.push(`Total: R$ ${formatPrice(total)}`);
+    const orderId = `#${String(Date.now()).slice(-6)}`;
+    const subtotal = total;
+    const deliveryFee = 0;
+    const grandTotal = subtotal + deliveryFee;
+    const trackingToken = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    const trackingUrl = `${window.location.origin}/app/${slug ?? restaurant.id}/track?token=${trackingToken}`;
+
+    const itemLines = cart.map((item) => {
+      const itemTotal = item.product.price * item.qty;
+      return [`${item.qty}x ${item.product.name} (R$ ${formatPrice(item.product.price)})`, `Subtotal do item: R$ ${formatPrice(itemTotal)}`].join('\n');
+    });
+
+    const lines = [
+      '✅ NOVO PEDIDO',
+      '-----------------------------',
+      '▶️ RESUMO DO PEDIDO',
+      '',
+      `Pedido ${orderId}`,
+      '',
+      'Link para acompanhar status do pedido:',
+      trackingUrl,
+      '',
+      ...itemLines,
+      '',
+      `SUBTOTAL: R$ ${formatPrice(subtotal)}`,
+      '',
+      '------------------------------------------',
+      '▶️ Dados para entrega',
+      '',
+      `Nome: ${customerName || 'Não informado'}`,
+      `Endereço: ${customerAddress || restaurant.address || 'Não informado'}`,
+      `Bairro: ${customerNeighborhood || 'Não informado'}`,
+      `Complemento: ${customerComplement || 'Não informado'}`,
+      `Ponto de Referência: ${customerReference || 'Não informado'}`,
+      `Telefone: ${customerPhone || 'Não informado'}`,
+      '',
+      `Taxa de Entrega: R$ ${formatPrice(deliveryFee)}`,
+      '',
+      `🕙 Tempo de Entrega: ${deliveryTime}`,
+      '',
+      '-------------------------------',
+      `▶️ TOTAL = R$ ${formatPrice(grandTotal)}`,
+      '------------------------------',
+      '',
+      '▶️ PAGAMENTO',
+      '',
+      paymentMethod,
+      '',
+      '▶️ INFORMAÇÕES DA LOJA',
+      '',
+      `Status: ${statusLabel}`,
+      `Horário: ${openingHours}`,
+      `Retirada: ${pickupTime}`,
+      deliveryInfo,
+    ].filter(Boolean);
 
     const text = encodeURIComponent(lines.join('\n'));
     const url = phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
@@ -473,6 +532,75 @@ export default function PublicMenu() {
                   </div>
                 ) : (
                   <div className="mt-5 space-y-4">
+                    <div className="grid gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-4 md:grid-cols-2">
+                      <label className="space-y-1 text-sm">
+                        <span className="font-semibold text-ink-700">Nome</span>
+                        <input
+                          value={customerName}
+                          onChange={(event) => setCustomerName(event.target.value)}
+                          className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                          placeholder="Seu nome"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="font-semibold text-ink-700">Telefone</span>
+                        <input
+                          value={customerPhone}
+                          onChange={(event) => setCustomerPhone(event.target.value)}
+                          className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                          placeholder="(31) 99999-9999"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm md:col-span-2">
+                        <span className="font-semibold text-ink-700">Endereço</span>
+                        <input
+                          value={customerAddress}
+                          onChange={(event) => setCustomerAddress(event.target.value)}
+                          className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                          placeholder="Rua, número"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="font-semibold text-ink-700">Bairro</span>
+                        <input
+                          value={customerNeighborhood}
+                          onChange={(event) => setCustomerNeighborhood(event.target.value)}
+                          className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                          placeholder="Bairro"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="font-semibold text-ink-700">Complemento</span>
+                        <input
+                          value={customerComplement}
+                          onChange={(event) => setCustomerComplement(event.target.value)}
+                          className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                          placeholder="Casa, apto, bloco"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm md:col-span-2">
+                        <span className="font-semibold text-ink-700">Ponto de referência</span>
+                        <input
+                          value={customerReference}
+                          onChange={(event) => setCustomerReference(event.target.value)}
+                          className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                          placeholder="Ex: perto do posto"
+                        />
+                      </label>
+                      <label className="space-y-1 text-sm md:col-span-2">
+                        <span className="font-semibold text-ink-700">Pagamento</span>
+                        <select
+                          value={paymentMethod}
+                          onChange={(event) => setPaymentMethod(event.target.value)}
+                          className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                        >
+                          <option>Pagamento no cartão</option>
+                          <option>Pagamento no pix</option>
+                          <option>Pagamento em dinheiro</option>
+                        </select>
+                      </label>
+                    </div>
+
                     {cart.map((item) => (
                       <div key={item.product.id} className="flex items-center justify-between gap-4 rounded-2xl border border-ink-200 bg-white px-4 py-3">
                         <div className="min-w-0">
@@ -542,31 +670,102 @@ export default function PublicMenu() {
                         Seu carrinho está vazio.
                       </div>
                     ) : (
-                      cart.map((item) => (
-                        <div key={item.product.id} className="flex items-center justify-between gap-4 rounded-2xl border border-ink-200 bg-white px-4 py-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-ink-950">{item.product.name}</div>
-                            <div className="text-xs text-ink-500">R$ {formatPrice(item.product.price)}</div>
-                          </div>
-                          <div className="flex items-center gap-2 rounded-full border border-ink-200 bg-ink-50 p-1">
-                            <button
-                              type="button"
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
-                              onClick={() => changeQty(item.product.id, item.qty - 1)}
+                      <div className="space-y-4">
+                        <div className="grid gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-4">
+                          <label className="space-y-1 text-sm">
+                            <span className="font-semibold text-ink-700">Nome</span>
+                            <input
+                              value={customerName}
+                              onChange={(event) => setCustomerName(event.target.value)}
+                              className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                              placeholder="Seu nome"
+                            />
+                          </label>
+                          <label className="space-y-1 text-sm">
+                            <span className="font-semibold text-ink-700">Telefone</span>
+                            <input
+                              value={customerPhone}
+                              onChange={(event) => setCustomerPhone(event.target.value)}
+                              className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                              placeholder="(31) 99999-9999"
+                            />
+                          </label>
+                          <label className="space-y-1 text-sm">
+                            <span className="font-semibold text-ink-700">Endereço</span>
+                            <input
+                              value={customerAddress}
+                              onChange={(event) => setCustomerAddress(event.target.value)}
+                              className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                              placeholder="Rua, número"
+                            />
+                          </label>
+                          <label className="space-y-1 text-sm">
+                            <span className="font-semibold text-ink-700">Bairro</span>
+                            <input
+                              value={customerNeighborhood}
+                              onChange={(event) => setCustomerNeighborhood(event.target.value)}
+                              className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                              placeholder="Bairro"
+                            />
+                          </label>
+                          <label className="space-y-1 text-sm">
+                            <span className="font-semibold text-ink-700">Complemento</span>
+                            <input
+                              value={customerComplement}
+                              onChange={(event) => setCustomerComplement(event.target.value)}
+                              className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                              placeholder="Casa, apto, bloco"
+                            />
+                          </label>
+                          <label className="space-y-1 text-sm">
+                            <span className="font-semibold text-ink-700">Ponto de referência</span>
+                            <input
+                              value={customerReference}
+                              onChange={(event) => setCustomerReference(event.target.value)}
+                              className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                              placeholder="Ex: perto do posto"
+                            />
+                          </label>
+                          <label className="space-y-1 text-sm">
+                            <span className="font-semibold text-ink-700">Pagamento</span>
+                            <select
+                              value={paymentMethod}
+                              onChange={(event) => setPaymentMethod(event.target.value)}
+                              className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
                             >
-                              -
-                            </button>
-                            <div className="w-6 text-center text-sm font-semibold text-ink-900">{item.qty}</div>
-                            <button
-                              type="button"
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
-                              onClick={() => changeQty(item.product.id, item.qty + 1)}
-                            >
-                              +
-                            </button>
-                          </div>
+                              <option>Pagamento no cartão</option>
+                              <option>Pagamento no pix</option>
+                              <option>Pagamento em dinheiro</option>
+                            </select>
+                          </label>
                         </div>
-                      ))
+
+                        {cart.map((item) => (
+                          <div key={item.product.id} className="flex items-center justify-between gap-4 rounded-2xl border border-ink-200 bg-white px-4 py-3">
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-semibold text-ink-950">{item.product.name}</div>
+                              <div className="text-xs text-ink-500">R$ {formatPrice(item.product.price)}</div>
+                            </div>
+                            <div className="flex items-center gap-2 rounded-full border border-ink-200 bg-ink-50 p-1">
+                              <button
+                                type="button"
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
+                                onClick={() => changeQty(item.product.id, item.qty - 1)}
+                              >
+                                -
+                              </button>
+                              <div className="w-6 text-center text-sm font-semibold text-ink-900">{item.qty}</div>
+                              <button
+                                type="button"
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
+                                onClick={() => changeQty(item.product.id, item.qty + 1)}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
 

@@ -147,21 +147,6 @@ export default function DashboardPage() {
           )}
         </div>
       </Card>
-
-      <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-white p-6 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
-              Organização
-            </p>
-            <h3 className="mt-2 text-lg font-semibold text-orange-900">QR Code movido para o Perfil</h3>
-            <p className="mt-2 text-sm text-orange-700">
-              O QR do cardápio agora fica no seu Perfil, com opções de copiar link, baixar PNG e imprimir.
-            </p>
-          </div>
-          <Badge variant="warning">→</Badge>
-        </div>
-      </Card>
     </Section>
   );
 }
