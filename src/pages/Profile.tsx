@@ -241,13 +241,13 @@ export default function ProfilePage() {
         {logoSyncWarning && <Alert type="warning">{logoSyncWarning}</Alert>}
         {success && <Alert type="success">{success}</Alert>}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-4">
+          <div className="grid gap-4 md:grid-cols-2 p-4">
             <Input label="Nome" {...register('name')} />
             <Input label="Email" type="email" {...register('email')} />
           </div>
 
-          <div>
+          <div className='p-4'>
             <Input
               label="Endereço da empresa"
               placeholder="Ex: Rua das Flores, 123 - Bairro, Cidade"

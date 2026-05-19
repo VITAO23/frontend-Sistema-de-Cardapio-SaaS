@@ -6,6 +6,7 @@ import LoginPage from '../pages/Login';
 import ProductsPage from '../pages/Products';
 import ProfilePage from '../pages/Profile';
 import PublicMenuPage from '../pages/PublicMenu';
+import RegisterPage from '../pages/Register';
 import ProtectedRoute from './ProtectedRoute';
 import { useAuth } from '../hooks/useAuth';
 
@@ -18,6 +19,10 @@ export default function AppRoutes() {
       <Route
         path="/login"
         element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />}
+      />
+      <Route
+        path="/register"
+        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
       />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>

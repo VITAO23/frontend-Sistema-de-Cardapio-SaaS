@@ -13,11 +13,18 @@ type LoginInput = {
   password: string;
 };
 
+type RegisterInput = {
+  name: string;
+  email: string;
+  password: string;
+};
+
 type AuthContextValue = {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
   login: (data: LoginInput) => Promise<void>;
+  register: (data: RegisterInput) => Promise<void>;
   logout: () => void;
 };
 
@@ -70,6 +77,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const register = useCallback(async ({ name, email, password }: RegisterInput) => {
+    const payload = { name, email, password };
+
+    try {
+      const response = await api.post('/register', payload);
+      const { token: nextToken, user: nextUser } = response.data as {
+        token: string;
+        user: User;
+      };
+
+      localStorage.setItem(STORAGE_TOKEN_KEY, nextToken);
+      localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(nextUser));
+
+      setToken(nextToken);
+      setUser(nextUser);
+    } catch (err: unknown) {
+      // eslint-disable-next-line no-console
+      console.error('[Auth] register error:', (err as any)?.response?.status, (err as any)?.response?.data ?? (err as any)?.message ?? err);
+      throw err;
+    }
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_TOKEN_KEY);
     localStorage.removeItem(STORAGE_USER_KEY);
@@ -84,9 +113,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       isAuthenticated: Boolean(token),
       login,
+      register,
       logout,
     }),
-    [login, logout, token, user],
+    [login, logout, register, token, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -92,6 +92,13 @@ export default function LoginPage() {
             <div className="mt-6 rounded-2xl border border-ink-200 bg-ink-50 px-4 py-3 text-xs">
               <p className="font-semibold text-ink-700">Credenciais de demo:</p>
               <p className="mt-1 font-mono text-ink-600">victor@email.com / 123456</p>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm text-ink-600">
+              Ainda não tem conta?{' '}
+              <Link to="/register" className="font-semibold text-ink-900 underline underline-offset-4">
+                Criar conta
+              </Link>
             </div>
           </div>
         </div>
