@@ -45,17 +45,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => readStoredUser());
 
   const login = useCallback(async ({ email, password }: LoginInput) => {
-    const response = await api.post('/login', { email, password });
-    const { token: nextToken, user: nextUser } = response.data as {
-      token: string;
-      user: User;
-    };
+    // Log request payload for debugging
+    const payload = { email, password };
+    // eslint-disable-next-line no-console
+    console.log('[Auth] login payload:', payload);
 
-    localStorage.setItem(STORAGE_TOKEN_KEY, nextToken);
-    localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(nextUser));
+    try {
+      const response = await api.post('/login', payload);
+      const { token: nextToken, user: nextUser } = response.data as {
+        token: string;
+        user: User;
+      };
 
-    setToken(nextToken);
-    setUser(nextUser);
+      localStorage.setItem(STORAGE_TOKEN_KEY, nextToken);
+      localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(nextUser));
+
+      setToken(nextToken);
+      setUser(nextUser);
+    } catch (err: unknown) {
+      // Log detailed server error for debugging (400 body, validation errors, etc.)
+      // eslint-disable-next-line no-console
+      console.error('[Auth] login error:', (err as any)?.response?.status, (err as any)?.response?.data ?? (err as any)?.message ?? err);
+      throw err;
+    }
   }, []);
 
   const logout = useCallback(() => {

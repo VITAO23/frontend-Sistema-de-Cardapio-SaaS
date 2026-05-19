@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { api } from '../services/api';
-import { Input, Button, Section, Card, Alert, AvatarUploader } from '../components';
+import { Input, Button, Section, Card, Alert, AvatarUploader, Select, Textarea } from '../components';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 
 const profileSchema = z.object({
@@ -16,7 +16,36 @@ const profileSchema = z.object({
 
 type ProfileForm = z.infer<typeof profileSchema>;
 
+type MenuSettings = {
+  status: 'open' | 'closed';
+  openingHours: string;
+  deliveryTime: string;
+  pickupTime: string;
+  deliveryInfo: string;
+};
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+const MENU_SETTINGS_KEY = 'public-menu-settings';
+
+const defaultMenuSettings: MenuSettings = {
+  status: 'open',
+  openingHours: 'Seg - Dom | 18:00 - 23:00',
+  deliveryTime: '50 - 70 min',
+  pickupTime: '25 - 40 min',
+  deliveryInfo: 'Entregas em um raio de 6 km. Taxa a partir de R$ 6,00.',
+};
+
+function readMenuSettings() {
+  const raw = localStorage.getItem(MENU_SETTINGS_KEY);
+  if (!raw) return defaultMenuSettings;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<MenuSettings>;
+    return { ...defaultMenuSettings, ...parsed };
+  } catch {
+    return defaultMenuSettings;
+  }
+}
 
 function resolveMediaUrl(url?: string | null) {
   if (!url) return null;
@@ -44,6 +73,7 @@ export default function ProfilePage() {
   const [slug, setSlug] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [menuSettings, setMenuSettings] = useState<MenuSettings>(() => readMenuSettings());
 
   const { register, handleSubmit, setValue } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -196,6 +226,7 @@ export default function ProfilePage() {
       }
 
       setSuccess('Perfil atualizado com sucesso.');
+      localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(menuSettings));
     } catch (err: unknown) {
       setSubmitError(getErrorMessage(err, 'Erro ao atualizar perfil.'));
     } finally {
@@ -224,6 +255,79 @@ export default function ProfilePage() {
             />
             <p className="mt-1 text-xs text-ink-500">
               Este endereço será exibido no cardápio público
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-ink-200 bg-white p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">
+              Funcionamento e entrega
+            </p>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <Select
+                label="Status"
+                options={[
+                  { value: 'open', label: 'Aberto' },
+                  { value: 'closed', label: 'Fechado' },
+                ]}
+                value={menuSettings.status}
+                onChange={(event) =>
+                  setMenuSettings((current) => ({
+                    ...current,
+                    status: event.target.value as MenuSettings['status'],
+                  }))
+                }
+              />
+
+              <Input
+                label="Horarios"  placeholder="ex: Seg - Dom | 18:00 - 23:00"
+                value={menuSettings.openingHours}
+                onChange={(event) =>
+                  setMenuSettings((current) => ({
+                    ...current,
+                    openingHours: event.target.value,
+                  }))
+                }
+              />
+
+              <Input
+                label="Entrega (tempo medio)" placeholder="00 - 00 min"
+                value={menuSettings.deliveryTime}
+                onChange={(event) =>
+                  setMenuSettings((current) => ({
+                    ...current,
+                    deliveryTime: event.target.value,
+                  }))
+                }
+              />
+
+              <Input
+                label="Retirada (tempo medio)" placeholder="00 - 00 min"
+                value={menuSettings.pickupTime}
+                onChange={(event) =>
+                  setMenuSettings((current) => ({
+                    ...current,
+                    pickupTime: event.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="mt-4">
+              <Textarea
+                label="Info de entrega" placeholder="Ex: Entregamos em um raio de 6 km. Taxa a partir de R$ 6,00."
+                rows={2}
+                value={menuSettings.deliveryInfo}
+                onChange={(event) =>
+                  setMenuSettings((current) => ({
+                    ...current,
+                    deliveryInfo: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <p className="mt-2 text-xs text-ink-500">
+              Estas informacoes aparecem no cardapio publico (por enquanto, salvas localmente).
             </p>
           </div>
 
