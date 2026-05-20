@@ -356,14 +356,14 @@ export default function PublicMenu() {
                 >
                   Ver categorias
                 </Button>
-                <Button
+                {/* <Button
                   variant="secondary"
                   className="!border-ink-300 !text-ink-800 hover:!bg-ink-100"
                   onClick={checkoutWhatsApp}
                   disabled={cart.length === 0}
                 >
                   Ir ao WhatsApp
-                </Button>
+                </Button> */}
               </div>
             </div>
           </div>
