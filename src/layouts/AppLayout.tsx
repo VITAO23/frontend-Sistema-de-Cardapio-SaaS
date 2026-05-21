@@ -75,6 +75,18 @@ export default function AppLayout() {
               Produtos
             </NavLink>
             <NavLink
+              to="/restaurant"
+              className={({ isActive }) =>
+                `${navLinkBase} ${
+                  isActive
+                    ? 'bg-ink-900 text-white shadow-[0_14px_30px_rgba(22,32,45,0.3)]'
+                    : 'bg-white/80 text-ink-600'
+                }`
+              }
+            >
+              Restaurante
+            </NavLink>
+            <NavLink
               to="/profile"
               className={({ isActive }) =>
                 `${navLinkBase} ${

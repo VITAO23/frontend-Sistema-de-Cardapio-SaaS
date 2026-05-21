@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Badge, Card, Section } from '../components';
 
-type TabId = 'estoque' | 'insumos' | 'producao' | 'entrega';
+type TabId = 'estoque' | 'insumos' | 'producao' | 'entrega' | 'empresa';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -98,6 +98,16 @@ export default function DashboardPage() {
           >
             🚗 Entrega
           </button>
+          <button
+            onClick={() => setActiveTab('empresa')}
+            className={`px-4 py-3 text-sm font-semibold transition ${
+              activeTab === 'empresa'
+                ? 'border-b-2 border-mint-600 text-mint-900'
+                : 'text-mint-700 hover:text-mint-900'
+            }`}
+          >
+            🏪 Empresa
+          </button>
         </div>
 
         {/* Tab Content */}
@@ -142,6 +152,37 @@ export default function DashboardPage() {
               <div className="mt-4 rounded-lg border border-dashed border-ink-300 bg-ink-50 p-8 text-center text-ink-500">
                 <p>🗺️ Funcionalidade em desenvolvimento</p>
                 <p className="mt-1 text-xs">Breve: rastreamento de pedidos e rotas</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'empresa' && (
+            <div>
+              <h4 className="font-semibold text-ink-900">Dados da Empresa</h4>
+              <p className="mt-2 text-sm text-ink-600">Centralize tudo que afeta o cardápio e a operação da loja.</p>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border border-ink-200 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Cadastro</p>
+                  <p className="mt-2 text-sm text-ink-700">Nome, logo, WhatsApp e endereço exibidos no cardápio.</p>
+                </div>
+                <div className="rounded-lg border border-ink-200 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Funcionamento</p>
+                  <p className="mt-2 text-sm text-ink-700">Status, horários, tempo de entrega e retirada.</p>
+                </div>
+                <div className="rounded-lg border border-ink-200 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Entrega</p>
+                  <p className="mt-2 text-sm text-ink-700">Taxas, raio e informações adicionais para o cliente.</p>
+                </div>
+                <div className="rounded-lg border border-ink-200 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Cardápio</p>
+                  <p className="mt-2 text-sm text-ink-700">Categorias, produtos e destaques do dia.</p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-lg border border-dashed border-ink-300 bg-ink-50 p-6 text-center text-ink-500">
+                <p>🧩 Conteúdo da aba em desenvolvimento</p>
+                <p className="mt-1 text-xs">Aqui vamos concentrar o cadastro completo da empresa.</p>
               </div>
             </div>
           )}

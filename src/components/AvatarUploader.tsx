@@ -67,7 +67,6 @@ export default function AvatarUploader({ initialUrl = null, onChange, label, inp
           </div>
         )}
       </div>
-
       <div className="flex flex-col">
         {label ? (
           <label htmlFor={inputId} className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-500">

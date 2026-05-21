@@ -6,6 +6,7 @@ import LoginPage from '../pages/Login';
 import ProductsPage from '../pages/Products';
 import ProfilePage from '../pages/Profile';
 import PublicMenuPage from '../pages/PublicMenu';
+import RestaurantDataPage from '../pages/RestaurantData';
 import RegisterPage from '../pages/Register';
 import ProtectedRoute from './ProtectedRoute';
 import { useAuth } from '../hooks/useAuth';
@@ -28,6 +29,7 @@ export default function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/restaurant" element={<RestaurantDataPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
