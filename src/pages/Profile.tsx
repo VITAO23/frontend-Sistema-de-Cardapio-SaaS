@@ -116,16 +116,13 @@ export default function ProfilePage() {
   return (
     <Section title="Meu Perfil" subtitle="Atualize suas informações pessoais">
       <Card>
-        {submitError && <Alert type="error">{submitError}</Alert>}
-        {success && <Alert type="success">{success}</Alert>}
-
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-4">
           <div className="grid gap-4 md:grid-cols-2 p-4">
             <Input label="Nome" {...register('name')} />
             <Input label="Email" type="email" {...register('email')} />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-1">
             <div>
               <AvatarUploader initialUrl={avatarPreview} onChange={onAvatarChange} label="Foto do usuario" inputId="user-avatar" />
               <p className="mt-2 text-xs text-ink-500">Tamanho recomendado: 400x400px</p>
@@ -143,6 +140,9 @@ export default function ProfilePage() {
             >
               Alterar senha
             </button>
+            {submitError && <Alert type="error">{submitError}</Alert>}
+        {success && <Alert type="success">{success}</Alert>}
+
           </div>
         </form>
       </Card>

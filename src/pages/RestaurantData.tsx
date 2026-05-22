@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import QRCode from 'qrcode';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { api } from '../services/api';
 import { Alert, AvatarUploader, Button, Card, Input, Section, Select, Textarea } from '../components';
@@ -10,55 +10,74 @@ import { Alert, AvatarUploader, Button, Card, Input, Section, Select, Textarea }
 const restaurantSchema = z.object({
   name: z.string().min(2, 'Informe o nome do restaurante.'),
   address: z.string().optional(),
+  street: z.string().optional(),
+  number: z.string().optional(),
+  complement: z.string().optional(),
+  neighborhood: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zipCode: z.string().optional(),
   whatsapp: z.string().optional(),
+  status: z.enum(['open', 'closed']).default('open'),
+  openingHours: z.string().optional(),
+  deliveryEnabled: z.boolean().default(true),
+  deliveryTime: z.string().optional(),
+  pickupTime: z.string().optional(),
+  deliveryInfo: z.string().optional(),
+  deliveryFee: z.coerce.number().optional(),
+  deliveryRadiusKm: z.coerce.number().optional(),
 });
 
 type RestaurantForm = z.infer<typeof restaurantSchema>;
 
-type MenuSettings = {
-  status: 'open' | 'closed';
-  openingHours: string;
-  deliveryTime: string;
-  pickupTime: string;
-  deliveryInfo: string;
-};
-
 type RestaurantResponse = {
   name?: string | null;
   address?: string | null;
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
   whatsapp?: string | null;
   logoUrl?: string | null;
   slug?: string | null;
   status?: 'open' | 'closed' | null;
   openingHours?: string | null;
+  deliveryEnabled?: boolean | null;
   deliveryTime?: string | null;
   pickupTime?: string | null;
   deliveryInfo?: string | null;
+  deliveryFee?: number | null;
+  deliveryRadiusKm?: number | null;
+  publicMenuUrl?: string | null;
+  publicMenuAliasUrl?: string | null;
+  qrUrl?: string | null;
+};
+
+const emptyFormValues: RestaurantForm = {
+  name: '',
+  address: '',
+  street: '',
+  number: '',
+  complement: '',
+  neighborhood: '',
+  city: '',
+  state: '',
+  zipCode: '',
+  whatsapp: '',
+  status: 'open',
+  openingHours: '',
+  deliveryEnabled: true,
+  deliveryTime: '',
+  pickupTime: '',
+  deliveryInfo: '',
+  deliveryFee: undefined,
+  deliveryRadiusKm: undefined,
 };
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
-const MENU_SETTINGS_KEY = 'public-menu-settings';
-
-const defaultMenuSettings: MenuSettings = {
-  status: 'open',
-  openingHours: 'Seg - Dom | 18:00 - 23:00',
-  deliveryTime: '50 - 70 min',
-  pickupTime: '25 - 40 min',
-  deliveryInfo: 'Entregas em um raio de 6 km. Taxa a partir de R$ 6,00.',
-};
-
-function readMenuSettings() {
-  const raw = localStorage.getItem(MENU_SETTINGS_KEY);
-  if (!raw) return defaultMenuSettings;
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<MenuSettings>;
-    return { ...defaultMenuSettings, ...parsed };
-  } catch {
-    return defaultMenuSettings;
-  }
-}
-
 function resolveMediaUrl(url?: string | null) {
   if (!url) return null;
   if (/^https?:\/\//i.test(url)) return url;
@@ -101,41 +120,61 @@ export default function RestaurantDataPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [slug, setSlug] = useState('');
+  const [restaurantReady, setRestaurantReady] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [menuSettings, setMenuSettings] = useState<MenuSettings>(() => readMenuSettings());
 
-  const { register, handleSubmit, setValue } = useForm<RestaurantForm>({
-    resolver: zodResolver(restaurantSchema),
+  const { register, handleSubmit, reset } = useForm<RestaurantForm>({
+    defaultValues: emptyFormValues,
+    resolver: zodResolver(restaurantSchema) as Resolver<RestaurantForm>,
   });
 
   useEffect(() => {
     void (async () => {
       setLoading(true);
+      setSubmitError(null);
       try {
         const res = await api.get<RestaurantResponse>('/restaurants/me');
         const data = res.data;
-        setValue('name', data.name ?? '');
-        setValue('address', data.address ?? '');
-        setValue('whatsapp', data.whatsapp ?? '');
+        setRestaurantReady(true);
+        reset({
+          ...emptyFormValues,
+          name: data.name ?? '',
+          address: data.address ?? '',
+          street: data.street ?? '',
+          number: data.number ?? '',
+          complement: data.complement ?? '',
+          neighborhood: data.neighborhood ?? '',
+          city: data.city ?? '',
+          state: data.state ?? '',
+          zipCode: data.zipCode ?? '',
+          whatsapp: data.whatsapp ?? '',
+          status: data.status ?? 'open',
+          openingHours: data.openingHours ?? '',
+          deliveryEnabled: data.deliveryEnabled ?? true,
+          deliveryTime: data.deliveryTime ?? '',
+          pickupTime: data.pickupTime ?? '',
+          deliveryInfo: data.deliveryInfo ?? '',
+          deliveryFee: data.deliveryFee ?? undefined,
+          deliveryRadiusKm: data.deliveryRadiusKm ?? undefined,
+        });
         if (data.logoUrl) setLogoPreview(resolveMediaUrl(data.logoUrl));
         if (data.slug) setSlug(data.slug);
-
-        setMenuSettings((current) => ({
-          ...current,
-          status: data.status ?? current.status,
-          openingHours: data.openingHours ?? current.openingHours,
-          deliveryTime: data.deliveryTime ?? current.deliveryTime,
-          pickupTime: data.pickupTime ?? current.pickupTime,
-          deliveryInfo: data.deliveryInfo ?? current.deliveryInfo,
-        }));
       } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 404) {
+          setRestaurantReady(false);
+          reset(emptyFormValues);
+          setSlug('');
+          setLogoPreview(null);
+          return;
+        }
+
         setSubmitError(getErrorMessage(err, 'Erro ao carregar dados do restaurante.'));
       } finally {
         setLoading(false);
       }
     })();
-  }, [setValue]);
+  }, [reset]);
 
   useEffect(() => {
     if (!slug || typeof window === 'undefined') {
@@ -206,9 +245,52 @@ export default function RestaurantDataPage() {
     setLoading(true);
 
     try {
-      await api.put('/restaurants/me', {
-        ...data,
-        ...menuSettings,
+      const payload = {
+        name: data.name,
+        address: data.address?.trim() || `${data.street ?? ''} ${data.number ?? ''}`.trim(),
+        street: data.street,
+        number: data.number,
+        complement: data.complement,
+        neighborhood: data.neighborhood,
+        city: data.city,
+        state: data.state,
+        zipCode: data.zipCode,
+        whatsapp: data.whatsapp,
+        status: data.status,
+        openingHours: data.openingHours,
+        deliveryEnabled: data.deliveryEnabled,
+        deliveryTime: data.deliveryTime,
+        pickupTime: data.pickupTime,
+        deliveryInfo: data.deliveryInfo,
+        deliveryFee: data.deliveryFee,
+        deliveryRadiusKm: data.deliveryRadiusKm,
+      };
+
+      const response = await api.put<RestaurantResponse>('/restaurants/me', payload);
+      const savedRestaurant = response.data;
+      setRestaurantReady(true);
+      setSlug(savedRestaurant.slug ?? slug);
+      if (savedRestaurant.logoUrl) setLogoPreview(resolveMediaUrl(savedRestaurant.logoUrl));
+      reset({
+        ...emptyFormValues,
+        name: savedRestaurant.name ?? data.name,
+        address: savedRestaurant.address ?? payload.address,
+        street: savedRestaurant.street ?? data.street,
+        number: savedRestaurant.number ?? data.number,
+        complement: savedRestaurant.complement ?? data.complement,
+        neighborhood: savedRestaurant.neighborhood ?? data.neighborhood,
+        city: savedRestaurant.city ?? data.city,
+        state: savedRestaurant.state ?? data.state,
+        zipCode: savedRestaurant.zipCode ?? data.zipCode,
+        whatsapp: savedRestaurant.whatsapp ?? data.whatsapp,
+        status: savedRestaurant.status ?? data.status,
+        openingHours: savedRestaurant.openingHours ?? data.openingHours,
+        deliveryEnabled: savedRestaurant.deliveryEnabled ?? data.deliveryEnabled,
+        deliveryTime: savedRestaurant.deliveryTime ?? data.deliveryTime,
+        pickupTime: savedRestaurant.pickupTime ?? data.pickupTime,
+        deliveryInfo: savedRestaurant.deliveryInfo ?? data.deliveryInfo,
+        deliveryFee: savedRestaurant.deliveryFee ?? data.deliveryFee,
+        deliveryRadiusKm: savedRestaurant.deliveryRadiusKm ?? data.deliveryRadiusKm,
       });
 
       if (logoFile) {
@@ -223,8 +305,7 @@ export default function RestaurantDataPage() {
         }
       }
 
-      setSuccess('Dados do restaurante atualizados com sucesso.');
-      localStorage.setItem(MENU_SETTINGS_KEY, JSON.stringify(menuSettings));
+      setSuccess(restaurantReady ? 'Dados do restaurante atualizados com sucesso.' : 'Restaurante criado e dados salvos com sucesso.');
     } catch (err: unknown) {
       setSubmitError(getErrorMessage(err, 'Erro ao atualizar dados do restaurante.'));
     } finally {
@@ -233,26 +314,36 @@ export default function RestaurantDataPage() {
   };
 
   return (
-    <Section title="Dados do Restaurante" subtitle="Configure o cadastro e as informacoes exibidas no cardapio">
+    <Section
+      title="Dados do Restaurante"
+      subtitle="Configure o cadastro e as informacoes exibidas no cardapio"
+    >
       <Card>
-        {submitError && <Alert type="error">{submitError}</Alert>}
-        {success && <Alert type="success">{success}</Alert>}
-
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-4">
+          {!restaurantReady && (
+            <Alert type="warning">
+              Ainda não existe um restaurante vinculado a este usuário. Preencha os dados abaixo e salve para criar.
+            </Alert>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2 p-4">
             <Input label="Nome do restaurante" {...register('name')} />
             <Input label="WhatsApp" placeholder="(31) 99999-9999" {...register('whatsapp')} />
+            <Input label="CEP" placeholder="30100-000" {...register('zipCode')} />
+            <Input label="Estado" placeholder="MG" {...register('state')} />
+            <Input label="Cidade" placeholder="Belo Horizonte" {...register('city')} />
+            <Input label="Bairro" placeholder="Centro" {...register('neighborhood')} />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3 p-4">
+            <Input label="Rua" placeholder="Rua das Flores" {...register('street')} />
+            <Input label="Número" placeholder="123" {...register('number')} />
+            <Input label="Complemento" placeholder="Loja A" {...register('complement')} />
           </div>
 
           <div className="p-4">
-            <Input
-              label="Endereco da empresa"
-              placeholder="Ex: Rua das Flores, 123 - Bairro, Cidade"
-              {...register('address')}
-            />
-            <p className="mt-1 text-xs text-ink-500">
-              Este endereco sera exibido no cardapio publico.
-            </p>
+            <Input label="Endereço completo" placeholder="Rua das Flores, 123 - Centro, Cidade" {...register('address')} />
+            <p className="mt-1 text-xs text-ink-500">Se vazio, o sistema pode montar o endereço com rua, número e cidade.</p>
           </div>
 
           <div className="rounded-2xl border border-ink-200 bg-white p-4">
@@ -267,49 +358,46 @@ export default function RestaurantDataPage() {
                   { value: 'open', label: 'Aberto' },
                   { value: 'closed', label: 'Fechado' },
                 ]}
-                value={menuSettings.status}
-                onChange={(event) =>
-                  setMenuSettings((current) => ({
-                    ...current,
-                    status: event.target.value as MenuSettings['status'],
-                  }))
-                }
+                {...register('status')}
               />
 
               <Input
                 label="Horarios"
                 placeholder="ex: Seg - Dom | 18:00 - 23:00"
-                value={menuSettings.openingHours}
-                onChange={(event) =>
-                  setMenuSettings((current) => ({
-                    ...current,
-                    openingHours: event.target.value,
-                  }))
-                }
+                {...register('openingHours')}
               />
+
+              <label className="flex items-center gap-3 rounded-xl border border-ink-200 bg-ink-50 px-4 py-3 text-sm font-medium text-ink-700">
+                <input type="checkbox" className="h-4 w-4 rounded border-ink-300" {...register('deliveryEnabled')} />
+                Entrega habilitada
+              </label>
 
               <Input
                 label="Entrega (tempo medio)"
                 placeholder="00 - 00 min"
-                value={menuSettings.deliveryTime}
-                onChange={(event) =>
-                  setMenuSettings((current) => ({
-                    ...current,
-                    deliveryTime: event.target.value,
-                  }))
-                }
+                {...register('deliveryTime')}
               />
 
               <Input
                 label="Retirada (tempo medio)"
                 placeholder="00 - 00 min"
-                value={menuSettings.pickupTime}
-                onChange={(event) =>
-                  setMenuSettings((current) => ({
-                    ...current,
-                    pickupTime: event.target.value,
-                  }))
-                }
+                {...register('pickupTime')}
+              />
+
+              <Input
+                label="Taxa de entrega"
+                type="number"
+                step="0.01"
+                placeholder="6.00"
+                {...register('deliveryFee')}
+              />
+
+              <Input
+                label="Raio de entrega (km)"
+                type="number"
+                step="0.1"
+                placeholder="6"
+                {...register('deliveryRadiusKm')}
               />
             </div>
 
@@ -318,13 +406,7 @@ export default function RestaurantDataPage() {
                 label="Info de entrega"
                 placeholder="Ex: Entregamos em um raio de 6 km. Taxa a partir de R$ 6,00."
                 rows={2}
-                value={menuSettings.deliveryInfo}
-                onChange={(event) =>
-                  setMenuSettings((current) => ({
-                    ...current,
-                    deliveryInfo: event.target.value,
-                  }))
-                }
+                {...register('deliveryInfo')}
               />
             </div>
             <p className="mt-2 text-xs text-ink-500">
@@ -332,7 +414,7 @@ export default function RestaurantDataPage() {
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-1">
             <div>
               <AvatarUploader initialUrl={logoPreview} onChange={onLogoChange} label="Logo da loja" inputId="store-logo" />
               <p className="mt-2 text-xs text-ink-500">Tamanho recomendado: 400x400px</p>
@@ -343,6 +425,8 @@ export default function RestaurantDataPage() {
             <Button type="submit" isLoading={loading}>
               Salvar
             </Button>
+            {submitError && <Alert type="error">{submitError}</Alert>}
+            {success && <Alert type="success">{success}</Alert>}
           </div>
         </form>
       </Card>

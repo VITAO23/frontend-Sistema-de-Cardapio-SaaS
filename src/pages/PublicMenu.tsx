@@ -23,11 +23,25 @@ type Restaurant = {
   logoUrl?: string | null;
   whatsapp?: string | null;
   address?: string | null;
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
   status?: 'open' | 'closed';
   openingHours?: string | null;
+  deliveryEnabled?: boolean | null;
   deliveryTime?: string | null;
   pickupTime?: string | null;
   deliveryInfo?: string | null;
+  deliveryFee?: number | null;
+  deliveryRadiusKm?: number | null;
+  deliveryArea?: unknown;
+  publicMenuUrl?: string | null;
+  publicMenuAliasUrl?: string | null;
+  qrUrl?: string | null;
   categories: Category[];
 };
 
@@ -68,11 +82,25 @@ function resolveMediaUrl(url?: string | null) {
   return `${API_URL.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
+function buildFullAddress(restaurant: Restaurant) {
+  const parts = [
+    restaurant.address,
+    [restaurant.street, restaurant.number].filter(Boolean).join(', '),
+    [restaurant.neighborhood, restaurant.city, restaurant.state].filter(Boolean).join(' - '),
+    restaurant.zipCode,
+  ]
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part));
+
+  return parts.join(' | ');
+}
+
 export default function PublicMenu() {
   const { slug } = useParams<{ slug: string }>();
   const [loading, setLoading] = useState(false);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [isDemo, setIsDemo] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [cart, setCart] = useState<Array<{ product: Product; qty: number }>>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
@@ -116,11 +144,6 @@ export default function PublicMenu() {
     return restaurant.categories;
   }, [restaurant]);
 
-  const visibleProductsCount = useMemo(
-    () => filteredCategories.reduce((count, category) => count + category.products.length, 0),
-    [filteredCategories],
-  );
-
   const addToCart = (product: Product) => {
     setCart((currentCart) => {
       const found = currentCart.find((item) => item.product.id === product.id);
@@ -147,10 +170,18 @@ export default function PublicMenu() {
   const featuredProducts = featuredCategory?.products.slice(0, 3) ?? [];
   const isOpen = (restaurant?.status ?? 'open') === 'open';
   const statusLabel = isOpen ? 'Aberto' : 'Fechado';
-  const openingHours = restaurant?.openingHours || 'Horarios nao informados';
+  const openingHours = restaurant?.openingHours || 'Horários não informados';
   const deliveryTime = restaurant?.deliveryTime || 'Tempo de entrega a confirmar';
   const pickupTime = restaurant?.pickupTime || 'Tempo de retirada a confirmar';
-  const deliveryInfo = restaurant?.deliveryInfo || 'Consulte a loja para taxas e area atendida.';
+  const deliveryInfo = restaurant?.deliveryInfo || 'Consulte a loja.';
+  const deliveryEnabled = restaurant?.deliveryEnabled ?? true;
+  const deliveryFee = typeof restaurant?.deliveryFee === 'number' ? restaurant.deliveryFee : null;
+  const deliveryRadiusKm = typeof restaurant?.deliveryRadiusKm === 'number' ? restaurant.deliveryRadiusKm : null;
+  const fullAddress = buildFullAddress(restaurant ?? ({} as Restaurant));
+  const restaurantLocationQuery = fullAddress || restaurant?.name || '';
+  const mapsEmbedUrl = restaurantLocationQuery
+    ? `https://www.google.com/maps?q=${encodeURIComponent(restaurantLocationQuery)}&z=16&output=embed`
+    : '';
 
   function checkoutWhatsApp() {
     if (!restaurant) return;
@@ -158,8 +189,8 @@ export default function PublicMenu() {
     const phone = restaurant.whatsapp?.replace(/[^0-9]/g, '') || '';
     const orderId = `#${String(Date.now()).slice(-6)}`;
     const subtotal = total;
-    const deliveryFee = 0;
-    const grandTotal = subtotal + deliveryFee;
+    const orderDeliveryFee = deliveryEnabled ? deliveryFee ?? 0 : 0;
+    const grandTotal = subtotal + orderDeliveryFee;
     const trackingToken = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
     const trackingUrl = `${window.location.origin}/app/${slug ?? restaurant.id}/track?token=${trackingToken}`;
 
@@ -192,9 +223,10 @@ export default function PublicMenu() {
       `Ponto de Referência: ${customerReference || 'Não informado'}`,
       `Telefone: ${customerPhone || 'Não informado'}`,
       '',
-      `Taxa de Entrega: R$ ${formatPrice(deliveryFee)}`,
+      `Taxa de Entrega: R$ ${formatPrice(orderDeliveryFee)}`,
       '',
       `🕙 Tempo de Entrega: ${deliveryTime}`,
+      deliveryEnabled ? '' : 'Entrega desativada no momento.',
       '',
       '-------------------------------',
       `▶️ TOTAL = R$ ${formatPrice(grandTotal)}`,
@@ -209,6 +241,8 @@ export default function PublicMenu() {
       `Status: ${statusLabel}`,
       `Horário: ${openingHours}`,
       `Retirada: ${pickupTime}`,
+      `Entrega: ${deliveryEnabled ? 'Habilitada' : 'Desabilitada'}`,
+      deliveryRadiusKm ? `Raio de entrega: ${deliveryRadiusKm} km` : '',
       deliveryInfo,
     ].filter(Boolean);
 
@@ -284,10 +318,14 @@ export default function PublicMenu() {
                 <div className="min-w-0 flex-1">
                   <h1 className="text-3xl font-black tracking-tight text-white md:text-5xl">{restaurant.name}</h1>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-ink-100">
-                    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsMapOpen(true)}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-left transition hover:bg-white/15"
+                    >
                       <span>📍</span>
-                      <span className="truncate">{restaurant.address || 'Endereço não informado'}</span>
-                    </span>
+                      <span className="truncate">{fullAddress || 'Endereço não informado'}</span>
+                    </button>
                     <span
                       className={`rounded-full px-3 py-1 font-semibold ${
                         isOpen
@@ -304,47 +342,45 @@ export default function PublicMenu() {
                 </div>
               </div>
 
-              <div className="relative mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 shadow-sm backdrop-blur">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-200">Categorias</div>
-                  <div className="mt-1 text-lg font-bold text-white">{filteredCategories.length}</div>
+              <div className="relative mt-6">
+                <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+                  Destaques
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 shadow-sm backdrop-blur">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-200">Itens</div>
-                  <div className="mt-1 text-lg font-bold text-white">{visibleProductsCount}</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 shadow-sm backdrop-blur">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-200">Carrinho</div>
-                  <div className="mt-1 text-lg font-bold text-white">{cartCount} itens</div>
+                <div className="mt-4 grid gap-3 text-sm text-ink-50 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 shadow-sm backdrop-blur">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-200">Entrega</p>
+                    <p className="mt-2 text-base font-semibold text-white">
+                      {deliveryEnabled ? deliveryTime : 'Entrega desativada'}
+                    </p>
+                    <p className="mt-1 text-xs text-ink-100">{deliveryInfo}</p>
+                    {deliveryFee !== null || deliveryRadiusKm !== null ? (
+                      <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-ink-200">
+                        {deliveryFee !== null ? `Taxa: R$ ${formatPrice(deliveryFee)}` : 'Taxa sob consulta'}
+                        {deliveryRadiusKm !== null ? ` · Raio: ${deliveryRadiusKm} km` : ''}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 shadow-sm backdrop-blur">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-200">Retirada</p>
+                    <p className="mt-2 text-base font-semibold text-white">{pickupTime}</p>
+                    <p className="mt-1 text-xs text-ink-100">Retire no balcao conforme disponibilidade.</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 shadow-sm backdrop-blur">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-200">Horarios</p>
+                    <p className="mt-2 text-base font-semibold text-white">{openingHours}</p>
+                    <p className="mt-1 text-xs text-ink-100">
+                      {isOpen ? 'Estamos atendendo agora.' : 'Estamos fechados no momento.'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="border-t border-ink-200 bg-gradient-to-br from-white via-ink-50 to-mint-50 p-5 lg:border-l lg:border-t-0 md:p-8">
               <div className="inline-flex rounded-full border border-ink-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-ink-600 shadow-sm">
-                Destaques
-              </div>
-
-              <div className="mt-4 grid gap-3 text-sm text-ink-700">
-                <div className="rounded-2xl border border-ink-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Entrega</p>
-                  <p className="mt-2 text-base font-semibold text-ink-950">{deliveryTime}</p>
-                  <p className="mt-1 text-sm text-ink-600">{deliveryInfo}</p>
-                </div>
-
-                <div className="rounded-2xl border border-ink-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Retirada</p>
-                  <p className="mt-2 text-base font-semibold text-ink-950">{pickupTime}</p>
-                  <p className="mt-1 text-sm text-ink-600">Retire no balcao conforme disponibilidade.</p>
-                </div>
-
-                <div className="rounded-2xl border border-ink-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Horarios</p>
-                  <p className="mt-2 text-base font-semibold text-ink-950">{openingHours}</p>
-                  <p className="mt-1 text-sm text-ink-600">
-                    {isOpen ? 'Estamos atendendo agora.' : 'Estamos fechados no momento.'}
-                  </p>
-                </div>
+                Acoes rapidas
               </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
@@ -368,6 +404,65 @@ export default function PublicMenu() {
             </div>
           </div>
         </header>
+
+        {isMapOpen ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm">
+            <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-ink-200 px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Localização</p>
+                  <h3 className="text-lg font-bold text-ink-950">{restaurant.name}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMapOpen(false)}
+                  className="rounded-full border border-ink-200 px-3 py-1 text-xs font-semibold text-ink-600 transition hover:bg-ink-100"
+                >
+                  Fechar
+                </button>
+              </div>
+
+              <div className="grid gap-0 md:grid-cols-[1.1fr_0.9fr]">
+                <div className="min-h-[320px] bg-ink-100">
+                  {mapsEmbedUrl ? (
+                    <iframe
+                      title={`Mapa de ${restaurant.name}`}
+                      src={mapsEmbedUrl}
+                      className="h-full min-h-[320px] w-full"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  ) : (
+                    <div className="flex min-h-[320px] items-center justify-center p-6 text-center text-sm text-ink-500">
+                      Endereço não disponível para exibir no mapa.
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4 p-5">
+                  <div className="rounded-2xl border border-ink-200 bg-ink-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Endereço</p>
+                    <p className="mt-2 text-sm leading-6 text-ink-800">
+                      {restaurant.address || 'Endereço não informado'}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-ink-200 bg-ink-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Abrir no Google Maps</p>
+                    <a
+                      href={mapsEmbedUrl ? mapsEmbedUrl.replace('/maps?q=', '/maps/search/?api=1&query=') : '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center rounded-xl border border-ink-300 bg-white px-4 py-2 text-sm font-semibold text-ink-900 transition hover:bg-ink-100"
+                    >
+                      Abrir em nova aba
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
           <main className="mb-16 space-y-5 sm:mb-0">
