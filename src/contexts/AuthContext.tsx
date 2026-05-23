@@ -19,6 +19,11 @@ type RegisterInput = {
   password: string;
 };
 
+type SessionResponse = {
+  token?: string;
+  user?: User;
+};
+
 type AuthContextValue = {
   user: User | null;
   token: string | null;
@@ -30,6 +35,11 @@ type AuthContextValue = {
 
 const STORAGE_TOKEN_KEY = 'token';
 const STORAGE_USER_KEY = 'user';
+
+const persistSession = (nextToken: string, nextUser: User) => {
+  localStorage.setItem(STORAGE_TOKEN_KEY, nextToken);
+  localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(nextUser));
+};
 
 const readStoredUser = () => {
   const raw = localStorage.getItem(STORAGE_USER_KEY);
@@ -59,14 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await api.post('/login', payload);
-      const { token: nextToken, user: nextUser } = response.data as {
-        token: string;
-        user: User;
-      };
+      const { token: nextToken, user: nextUser } = response.data as SessionResponse;
 
-      localStorage.setItem(STORAGE_TOKEN_KEY, nextToken);
-      localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(nextUser));
+      if (!nextToken || !nextUser) {
+        throw new Error('Invalid login response');
+      }
 
+      persistSession(nextToken, nextUser);
       setToken(nextToken);
       setUser(nextUser);
     } catch (err: unknown) {
@@ -82,16 +91,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await api.post('/register', payload);
-      const { token: nextToken, user: nextUser } = response.data as {
-        token: string;
-        user: User;
-      };
+      const { token: nextToken, user: nextUser } = response.data as SessionResponse;
 
-      localStorage.setItem(STORAGE_TOKEN_KEY, nextToken);
-      localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(nextUser));
+      if (nextToken && nextUser) {
+        persistSession(nextToken, nextUser);
+        setToken(nextToken);
+        setUser(nextUser);
+        return;
+      }
 
-      setToken(nextToken);
-      setUser(nextUser);
+      const loginResponse = await api.post('/login', payload);
+      const loginData = loginResponse.data as SessionResponse;
+
+      if (!loginData.token || !loginData.user) {
+        throw new Error('Invalid registration response');
+      }
+
+      persistSession(loginData.token, loginData.user);
+      setToken(loginData.token);
+      setUser(loginData.user);
     } catch (err: unknown) {
       // eslint-disable-next-line no-console
       console.error('[Auth] register error:', (err as any)?.response?.status, (err as any)?.response?.data ?? (err as any)?.message ?? err);

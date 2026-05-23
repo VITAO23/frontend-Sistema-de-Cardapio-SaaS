@@ -9,6 +9,33 @@ type Product = {
   description?: string | null;
   price: number;
   imageUrl?: string | null;
+  available?: boolean | null;
+  optionGroups?: Array<{
+    id?: string;
+    name: string;
+    priceMode?: 'add' | 'replace';
+    multiple?: boolean;
+    required?: boolean;
+    options: Array<{
+      id?: string;
+      name: string;
+      price?: number | null;
+    }>;
+  }>;
+};
+
+type SelectedOption = {
+  groupName: string;
+  optionName: string;
+  optionPrice: number;
+  priceMode: 'add' | 'replace';
+};
+
+type CartItem = {
+  product: Product;
+  qty: number;
+  selectedOptions: SelectedOption[];
+  observation: string;
 };
 
 type Category = {
@@ -46,6 +73,7 @@ type Restaurant = {
 };
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+const PRODUCT_OPTION_GROUPS_KEY = 'product-option-groups';
 
 function createDemoRestaurant(slug?: string): Restaurant {
   return {
@@ -95,20 +123,94 @@ function buildFullAddress(restaurant: Restaurant) {
   return parts.join(' | ');
 }
 
+function formatOptionGroupPreview(group: NonNullable<Product['optionGroups']>[number]) {
+  const optionNames = group.options.map((option) => option.name).filter(Boolean);
+  const mode = group.multiple ? 'múltipla' : 'única';
+  const required = group.required ? 'obrigatória' : 'opcional';
+  const suffix = optionNames.length ? `: ${optionNames.slice(0, 3).join(', ')}` : '';
+
+  return `${group.name} (${mode}, ${required})${suffix}`;
+}
+
+function resolveGroupPriceMode(groupName: string, priceMode?: string): 'add' | 'replace' {
+  if (priceMode === 'add' || priceMode === 'replace') {
+    return priceMode;
+  }
+
+  return /tamanho|size|tam\b/i.test(groupName) ? 'replace' : 'add';
+}
+
+function getCartItemUnitPrice(item: CartItem) {
+  const replacementOptions = item.selectedOptions.filter((option) => option.priceMode === 'replace');
+  const replacementBase = replacementOptions.length
+    ? replacementOptions[replacementOptions.length - 1].optionPrice
+    : item.product.price;
+
+  const additiveOptions = item.selectedOptions
+    .filter((option) => option.priceMode === 'add')
+    .reduce((sum, option) => sum + option.optionPrice, 0);
+
+  return replacementBase + additiveOptions;
+}
+
+function getCartItemTotalPrice(item: CartItem) {
+  return getCartItemUnitPrice(item) * item.qty;
+}
+
+function readLocalOptionGroups(productId: string) {
+  if (typeof window === 'undefined') return [] as NonNullable<Product['optionGroups']>;
+
+  const raw = localStorage.getItem(PRODUCT_OPTION_GROUPS_KEY);
+  if (!raw) return [] as NonNullable<Product['optionGroups']>;
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, NonNullable<Product['optionGroups']>>;
+    return parsed[productId] ?? [];
+  } catch {
+    return [] as NonNullable<Product['optionGroups']>;
+  }
+}
+
+function hydrateProductOptionGroups(product: Product): Product {
+  if (product.optionGroups?.length) return product;
+
+  const localOptionGroups = readLocalOptionGroups(product.id);
+  if (!localOptionGroups.length) return product;
+
+  return {
+    ...product,
+    optionGroups: localOptionGroups,
+  };
+}
+
+function hydrateRestaurantOptionGroups(restaurant: Restaurant): Restaurant {
+  return {
+    ...restaurant,
+    categories: restaurant.categories.map((category) => ({
+      ...category,
+      products: category.products.map(hydrateProductOptionGroups),
+    })),
+  };
+}
+
 export default function PublicMenu() {
   const { slug } = useParams<{ slug: string }>();
   const [loading, setLoading] = useState(false);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [isDemo, setIsDemo] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [cart, setCart] = useState<Array<{ product: Product; qty: number }>>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [configuringProduct, setConfiguringProduct] = useState<Product | null>(null);
+  const [selectedOptionValues, setSelectedOptionValues] = useState<Record<string, string[]>>({});
+  const [selectedObservation, setSelectedObservation] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerNeighborhood, setCustomerNeighborhood] = useState('');
   const [customerComplement, setCustomerComplement] = useState('');
   const [customerReference, setCustomerReference] = useState('');
+  const [orderObservation, setOrderObservation] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Pagamento no cartão');
   const [activeCategoryId, setActiveCategoryId] = useState('');
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -121,10 +223,10 @@ export default function PublicMenu() {
 
     void api
       .get(`/restaurants/${slug}`)
-      .then((res) => setRestaurant(res.data))
+      .then((res) => setRestaurant(hydrateRestaurantOptionGroups(res.data)))
       .catch((error) => {
         if (error?.response?.status === 404) {
-          setRestaurant(createDemoRestaurant(slug));
+          setRestaurant(hydrateRestaurantOptionGroups(createDemoRestaurant(slug)));
           setIsDemo(true);
           return;
         }
@@ -144,21 +246,104 @@ export default function PublicMenu() {
     return restaurant.categories;
   }, [restaurant]);
 
-  const addToCart = (product: Product) => {
+  const buildCartItemKey = (productId: string, selectedOptions: SelectedOption[], observation: string) =>
+    [productId, observation.trim().toLowerCase(), ...selectedOptions.map((option) => `${option.groupName}:${option.optionName}`)].join('|');
+
+  const addToCart = (product: Product, selectedOptions: SelectedOption[] = [], observation = '') => {
     setCart((currentCart) => {
-      const found = currentCart.find((item) => item.product.id === product.id);
-      if (found) return currentCart.map((item) => (item.product.id === product.id ? { ...item, qty: item.qty + 1 } : item));
-      return [...currentCart, { product, qty: 1 }];
+      const nextKey = buildCartItemKey(product.id, selectedOptions, observation);
+      const found = currentCart.find((item) => buildCartItemKey(item.product.id, item.selectedOptions, item.observation) === nextKey);
+
+      if (found) {
+        return currentCart.map((item) =>
+          buildCartItemKey(item.product.id, item.selectedOptions, item.observation) === nextKey
+            ? { ...item, qty: item.qty + 1 }
+            : item,
+        );
+      }
+
+      return [...currentCart, { product, qty: 1, selectedOptions, observation }];
     });
   };
 
-  const changeQty = (productId: string, qty: number) => {
-    setCart((currentCart) => currentCart.map((item) => (item.product.id === productId ? { ...item, qty } : item)).filter((item) => item.qty > 0));
+  const openProductConfig = (product: Product) => {
+    const firstSelections: Record<string, string[]> = {};
+
+    product.optionGroups?.forEach((group) => {
+      firstSelections[group.name] = [];
+    });
+
+    setConfiguringProduct(product);
+    setSelectedOptionValues(firstSelections);
+    setSelectedObservation('');
   };
 
-  const total = useMemo(() => cart.reduce((sum, item) => sum + item.product.price * item.qty, 0), [cart]);
-  const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.qty, 0), [cart]);
+  const closeProductConfig = () => {
+    setConfiguringProduct(null);
+    setSelectedOptionValues({});
+    setSelectedObservation('');
+  };
 
+  const toggleGroupOption = (groupName: string, optionName: string, multiple: boolean) => {
+    setSelectedOptionValues((current) => {
+      const groupValues = current[groupName] ?? [];
+
+      if (!multiple) {
+        return { ...current, [groupName]: [optionName] };
+      }
+
+      return groupValues.includes(optionName)
+        ? { ...current, [groupName]: groupValues.filter((value) => value !== optionName) }
+        : { ...current, [groupName]: [...groupValues, optionName] };
+    });
+  };
+
+  const confirmConfiguredProduct = () => {
+    if (!configuringProduct) return;
+
+    const selectedOptions: SelectedOption[] = [];
+    const missingRequiredGroup = configuringProduct.optionGroups?.some((group) => {
+      const selectedNames = selectedOptionValues[group.name] ?? [];
+
+      if (group.required && selectedNames.length === 0) {
+        return true;
+      }
+
+      selectedNames.forEach((optionName) => {
+        const match = group.options.find((option) => option.name === optionName);
+        if (match) {
+          selectedOptions.push({
+            groupName: group.name,
+            optionName: match.name,
+            optionPrice: typeof match.price === 'number' ? match.price : 0,
+            priceMode: resolveGroupPriceMode(group.name, group.priceMode),
+          });
+        }
+      });
+
+      return false;
+    });
+
+    if (missingRequiredGroup) return;
+
+    addToCart(configuringProduct, selectedOptions, selectedObservation);
+    closeProductConfig();
+  };
+
+  const changeQty = (lineKey: string, qty: number) => {
+    setCart((currentCart) =>
+      currentCart
+        .map((item) =>
+          buildCartItemKey(item.product.id, item.selectedOptions, item.observation) === lineKey
+            ? { ...item, qty }
+            : item,
+        )
+        .filter((item) => item.qty > 0),
+    );
+  };
+
+  const total = useMemo(() => cart.reduce((sum, item) => sum + getCartItemTotalPrice(item), 0), [cart]);
+  const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.qty, 0), [cart]);
   const scrollToCategory = (categoryId: string) => {
     if (!categoryId) return;
     setActiveCategoryId(categoryId);
@@ -173,7 +358,7 @@ export default function PublicMenu() {
   const openingHours = restaurant?.openingHours || 'Horários não informados';
   const deliveryTime = restaurant?.deliveryTime || 'Tempo de entrega a confirmar';
   const pickupTime = restaurant?.pickupTime || 'Tempo de retirada a confirmar';
-  const deliveryInfo = restaurant?.deliveryInfo || 'Consulte a loja.';
+  const deliveryInfo = restaurant?.deliveryInfo;
   const deliveryEnabled = restaurant?.deliveryEnabled ?? true;
   const deliveryFee = typeof restaurant?.deliveryFee === 'number' ? restaurant.deliveryFee : null;
   const deliveryRadiusKm = typeof restaurant?.deliveryRadiusKm === 'number' ? restaurant.deliveryRadiusKm : null;
@@ -182,68 +367,101 @@ export default function PublicMenu() {
   const mapsEmbedUrl = restaurantLocationQuery
     ? `https://www.google.com/maps?q=${encodeURIComponent(restaurantLocationQuery)}&z=16&output=embed`
     : '';
+  const configuringSelectedOptions: SelectedOption[] = configuringProduct?.optionGroups
+    ? configuringProduct.optionGroups.flatMap((group) => {
+        const groupMode = resolveGroupPriceMode(group.name, group.priceMode);
+        const selectedNames = selectedOptionValues[group.name] ?? [];
+
+        return selectedNames
+          .map((selectedName) => {
+            const option = group.options.find((item) => item.name === selectedName);
+            if (!option) return null;
+
+            return {
+              groupName: group.name,
+              optionName: option.name,
+              optionPrice: typeof option.price === 'number' ? option.price : 0,
+              priceMode: groupMode,
+            } satisfies SelectedOption;
+          })
+          .filter((option): option is SelectedOption => Boolean(option));
+      })
+    : [];
+  const configuringPreviewPrice = configuringProduct
+    ? getCartItemUnitPrice({
+        product: configuringProduct,
+        qty: 1,
+        selectedOptions: configuringSelectedOptions,
+        observation: selectedObservation,
+      })
+    : 0;
 
   function checkoutWhatsApp() {
     if (!restaurant) return;
 
     const phone = restaurant.whatsapp?.replace(/[^0-9]/g, '') || '';
     const orderId = `#${String(Date.now()).slice(-6)}`;
-    const subtotal = total;
+    const subtotal = cart.reduce((sum, item) => sum + getCartItemTotalPrice(item), 0);
     const orderDeliveryFee = deliveryEnabled ? deliveryFee ?? 0 : 0;
     const grandTotal = subtotal + orderDeliveryFee;
     const trackingToken = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
     const trackingUrl = `${window.location.origin}/app/${slug ?? restaurant.id}/track?token=${trackingToken}`;
 
-    const itemLines = cart.map((item) => {
-      const itemTotal = item.product.price * item.qty;
-      return [`${item.qty}x ${item.product.name} (R$ ${formatPrice(item.product.price)})`, `Subtotal do item: R$ ${formatPrice(itemTotal)}`].join('\n');
-    });
+    const itemLines = cart
+      .map((item) => {
+        const itemUnitPrice = getCartItemUnitPrice(item);
+        const itemTotal = itemUnitPrice * item.qty;
+        const optionsText = item.selectedOptions.length
+          ? item.selectedOptions
+              .map((option) => {
+                if (option.priceMode === 'replace') {
+                  return `    • ${option.groupName}: ${option.optionName} (preço base R$ ${formatPrice(option.optionPrice)})`;
+                }
+
+                return `    • ${option.groupName}: ${option.optionName}${option.optionPrice ? ` (+R$ ${formatPrice(option.optionPrice)})` : ''}`;
+              })
+              .join('\n')
+          : '    • Sem opções selecionadas';
+
+        return [
+          `• *${item.qty}x ${item.product.name}* — *R$ ${formatPrice(itemUnitPrice)}*`,
+          optionsText,
+          `    📝 Observação: ${item.observation ? item.observation : 'sem observações'}`,
+          `    Subtotal do item: *R$ ${formatPrice(itemTotal)}*`,
+        ].join('\n');
+      })
+      .join('\n\n');
+
+    const sep = '----------------------------------------';
 
     const lines = [
-      '✅ NOVO PEDIDO',
-      '-----------------------------',
-      '▶️ RESUMO DO PEDIDO',
-      '',
-      `Pedido ${orderId}`,
-      '',
-      'Link para acompanhar status do pedido:',
-      trackingUrl,
-      '',
-      ...itemLines,
-      '',
-      `SUBTOTAL: R$ ${formatPrice(subtotal)}`,
-      '',
-      '------------------------------------------',
-      '▶️ Dados para entrega',
-      '',
-      `Nome: ${customerName || 'Não informado'}`,
-      `Endereço: ${customerAddress || restaurant.address || 'Não informado'}`,
-      `Bairro: ${customerNeighborhood || 'Não informado'}`,
-      `Complemento: ${customerComplement || 'Não informado'}`,
-      `Ponto de Referência: ${customerReference || 'Não informado'}`,
-      `Telefone: ${customerPhone || 'Não informado'}`,
-      '',
-      `Taxa de Entrega: R$ ${formatPrice(orderDeliveryFee)}`,
-      '',
-      `🕙 Tempo de Entrega: ${deliveryTime}`,
-      deliveryEnabled ? '' : 'Entrega desativada no momento.',
-      '',
-      '-------------------------------',
-      `▶️ TOTAL = R$ ${formatPrice(grandTotal)}`,
-      '------------------------------',
-      '',
-      '▶️ PAGAMENTO',
-      '',
-      paymentMethod,
-      '',
-      '▶️ INFORMAÇÕES DA LOJA',
-      '',
-      `Status: ${statusLabel}`,
-      `Horário: ${openingHours}`,
-      `Retirada: ${pickupTime}`,
-      `Entrega: ${deliveryEnabled ? 'Habilitada' : 'Desabilitada'}`,
-      deliveryRadiusKm ? `Raio de entrega: ${deliveryRadiusKm} km` : '',
-      deliveryInfo,
+      '✅ *NOVO PEDIDO*',
+      sep,
+      '🔔 *RESUMO DO PEDIDO*',
+      `${orderId}`,
+      sep,
+      `🔗 Link para acompanhar: ${trackingUrl}`,
+      sep,
+      itemLines,
+      sep,
+      `*SUBTOTAL:* *R$ ${formatPrice(subtotal)}*`,
+      `*Taxa de Entrega:* *R$ ${formatPrice(orderDeliveryFee)}*`,
+      sep,
+      `🔖 *TOTAL: R$ ${formatPrice(grandTotal)}*`,
+      sep,
+      '📦 *DADOS PARA ENTREGA*',
+      `*Nome:* ${customerName || 'Não informado'}`,
+      `*Endereço:* ${customerAddress || restaurant.address || 'Não informado'}`,
+      `*Bairro:* ${customerNeighborhood || 'Não informado'}`,
+      `*Complemento:* ${customerComplement || 'Não informado'}`,
+      `*Ponto de Referência:* ${customerReference || 'Não informado'}`,
+      `*Telefone:* ${customerPhone || 'Não informado'}`,
+      sep,
+      '💳 *PAGAMENTO*',
+      `${paymentMethod}`,
+      sep,
+      '🗒️ *OBSERVAÇÕES DO PEDIDO*',
+      `${orderObservation || 'Sem observações'}`,
     ].filter(Boolean);
 
     const text = encodeURIComponent(lines.join('\n'));
@@ -499,7 +717,7 @@ export default function PublicMenu() {
                         <button
                           key={product.id}
                           type="button"
-                          onClick={() => addToCart(product)}
+                          onClick={() => (product.optionGroups?.length ? openProductConfig(product) : addToCart(product))}
                           className="flex w-full items-center gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-3 text-left transition hover:border-mint-300 hover:bg-white"
                         >
                           <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white text-xs font-semibold uppercase text-ink-400">
@@ -512,8 +730,22 @@ export default function PublicMenu() {
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-semibold text-ink-950">{product.name}</div>
                             <div className="truncate text-xs text-ink-500">R$ {formatPrice(product.price)}</div>
+                            {product.optionGroups?.length ? (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {product.optionGroups.slice(0, 3).map((group) => (
+                                  <span
+                                    key={`${product.id}-${group.name}`}
+                                    className="rounded-full border border-mint-200 bg-mint-50 px-2.5 py-1 text-[11px] font-semibold text-mint-800"
+                                  >
+                                    {formatOptionGroupPreview(group)}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
                           </div>
-                          <div className="text-sm font-semibold text-mint-700">Adicionar</div>
+                          <div className="text-sm font-semibold text-mint-700">
+                            {product.optionGroups?.length ? 'Personalizar' : 'Adicionar'}
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -587,6 +819,18 @@ export default function PublicMenu() {
                                 <div>
                                   <h3 className="text-base font-bold text-ink-950">{product.name}</h3>
                                   {product.description ? <p className="mt-2 text-sm leading-6 text-ink-600">{product.description}</p> : null}
+                                  {product.optionGroups?.length ? (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                      {product.optionGroups.slice(0, 3).map((group) => (
+                                        <span
+                                          key={`${product.id}-${group.name}`}
+                                          className="rounded-full border border-mint-200 bg-mint-50 px-2.5 py-1 text-[11px] font-semibold text-mint-800"
+                                        >
+                                          {formatOptionGroupPreview(group)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : null}
                                 </div>
                               </div>
 
@@ -595,7 +839,7 @@ export default function PublicMenu() {
                                   <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-500">A partir de</div>
                                   <div className="text-xl font-black text-ink-950">R$ {formatPrice(product.price)}</div>
                                 </div>
-                                <Button size="sm" onClick={() => addToCart(product)}>
+                                <Button size="sm" onClick={() => (product.optionGroups?.length ? openProductConfig(product) : addToCart(product))}>
                                   Adicionar
                                 </Button>
                               </div>
@@ -694,34 +938,64 @@ export default function PublicMenu() {
                           <option>Pagamento em dinheiro</option>
                         </select>
                       </label>
+                      <label className="space-y-1 text-sm md:col-span-2">
+                        <span className="font-semibold text-ink-700">Observações do pedido</span>
+                        <textarea
+                          value={orderObservation}
+                          onChange={(event) => setOrderObservation(event.target.value)}
+                          className="min-h-24 w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                          placeholder="Ex: sem cebola, pouco molho..."
+                        />
+                      </label>
                     </div>
 
-                    {cart.map((item) => (
-                      <div key={item.product.id} className="flex items-center justify-between gap-4 rounded-2xl border border-ink-200 bg-white px-4 py-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-ink-950">{item.product.name}</div>
-                          <div className="text-xs text-ink-500">R$ {formatPrice(item.product.price)}</div>
-                        </div>
+                    {cart.map((item) => {
+                      const lineKey = buildCartItemKey(item.product.id, item.selectedOptions, item.observation);
 
-                        <div className="flex items-center gap-2 rounded-full border border-ink-200 bg-ink-50 p-1">
-                          <button
-                            type="button"
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
-                            onClick={() => changeQty(item.product.id, item.qty - 1)}
-                          >
-                            -
-                          </button>
-                          <div className="w-6 text-center text-sm font-semibold text-ink-900">{item.qty}</div>
-                          <button
-                            type="button"
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
-                            onClick={() => changeQty(item.product.id, item.qty + 1)}
-                          >
-                            +
-                          </button>
+                      return (
+                      <div key={lineKey} className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-ink-950">{item.product.name}</div>
+                            <div className="text-xs text-ink-500">R$ {formatPrice(getCartItemUnitPrice(item))}</div>
+                            {item.selectedOptions.length ? (
+                              <div className="mt-2 space-y-1 text-xs text-ink-600">
+                                {item.selectedOptions.map((option) => (
+                                  <p key={`${option.groupName}-${option.optionName}`}>
+                                    {option.groupName}: {option.optionName}
+                                      {option.priceMode === 'replace'
+                                        ? ` (base R$ ${formatPrice(option.optionPrice)})`
+                                        : option.optionPrice
+                                          ? ` (+R$ ${formatPrice(option.optionPrice)})`
+                                          : ''}
+                                  </p>
+                                ))}
+                              </div>
+                            ) : null}
+                            {item.observation ? <p className="mt-2 text-xs text-ink-600">Obs: {item.observation}</p> : null}
+                          </div>
+
+                          <div className="flex items-center gap-2 rounded-full border border-ink-200 bg-ink-50 p-1">
+                            <button
+                              type="button"
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
+                              onClick={() => changeQty(lineKey, item.qty - 1)}
+                            >
+                              -
+                            </button>
+                            <div className="w-6 text-center text-sm font-semibold text-ink-900">{item.qty}</div>
+                            <button
+                              type="button"
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
+                              onClick={() => changeQty(lineKey, item.qty + 1)}
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    ))}
+                    );
+                    })}
 
                     <div className="flex items-center justify-between border-t border-ink-200 pt-4">
                       <div className="text-sm font-semibold text-ink-600">Total</div>
@@ -835,31 +1109,52 @@ export default function PublicMenu() {
                           </label>
                         </div>
 
-                        {cart.map((item) => (
-                          <div key={item.product.id} className="flex items-center justify-between gap-4 rounded-2xl border border-ink-200 bg-white px-4 py-3">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-ink-950">{item.product.name}</div>
-                              <div className="text-xs text-ink-500">R$ {formatPrice(item.product.price)}</div>
-                            </div>
-                            <div className="flex items-center gap-2 rounded-full border border-ink-200 bg-ink-50 p-1">
-                              <button
-                                type="button"
-                                className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
-                                onClick={() => changeQty(item.product.id, item.qty - 1)}
-                              >
-                                -
-                              </button>
-                              <div className="w-6 text-center text-sm font-semibold text-ink-900">{item.qty}</div>
-                              <button
-                                type="button"
-                                className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
-                                onClick={() => changeQty(item.product.id, item.qty + 1)}
-                              >
-                                +
-                              </button>
+                        {cart.map((item) => {
+                          const lineKey = buildCartItemKey(item.product.id, item.selectedOptions, item.observation);
+
+                          return (
+                          <div key={lineKey} className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-ink-950">{item.product.name}</div>
+                                <div className="text-xs text-ink-500">R$ {formatPrice(getCartItemUnitPrice(item))}</div>
+                                {item.selectedOptions.length ? (
+                                  <div className="mt-2 space-y-1 text-xs text-ink-600">
+                                    {item.selectedOptions.map((option) => (
+                                      <p key={`${option.groupName}-${option.optionName}`}>
+                                        {option.groupName}: {option.optionName}
+                                        {option.priceMode === 'replace'
+                                          ? ` (base R$ ${formatPrice(option.optionPrice)})`
+                                          : option.optionPrice
+                                            ? ` (+R$ ${formatPrice(option.optionPrice)})`
+                                            : ''}
+                                      </p>
+                                    ))}
+                                  </div>
+                                ) : null}
+                                {item.observation ? <p className="mt-2 text-xs text-ink-600">Obs: {item.observation}</p> : null}
+                              </div>
+                              <div className="flex items-center gap-2 rounded-full border border-ink-200 bg-ink-50 p-1">
+                                <button
+                                  type="button"
+                                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
+                                  onClick={() => changeQty(lineKey, item.qty - 1)}
+                                >
+                                  -
+                                </button>
+                                <div className="w-6 text-center text-sm font-semibold text-ink-900">{item.qty}</div>
+                                <button
+                                  type="button"
+                                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink-800"
+                                  onClick={() => changeQty(lineKey, item.qty + 1)}
+                                >
+                                  +
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -880,6 +1175,121 @@ export default function PublicMenu() {
               </div>
             ) : null}
           </div>
+          {configuringProduct ? (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm">
+              <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+                <div className="flex items-start justify-between gap-4 border-b border-ink-200 px-5 py-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Personalizar item</p>
+                    <h3 className="mt-1 text-xl font-black text-ink-950">{configuringProduct.name}</h3>
+                    {configuringProduct.description ? <p className="mt-2 text-sm text-ink-600">{configuringProduct.description}</p> : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeProductConfig}
+                    className="rounded-full border border-ink-200 px-3 py-1 text-xs font-semibold text-ink-600 transition hover:bg-ink-100"
+                  >
+                    Fechar
+                  </button>
+                </div>
+
+                <div className="max-h-[70vh] space-y-4 overflow-auto px-5 py-5">
+                  <div className="rounded-2xl border border-ink-200 bg-ink-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Preço base</p>
+                    <p className="mt-2 text-2xl font-black text-ink-950">R$ {formatPrice(configuringProduct.price)}</p>
+                  </div>
+
+                  {configuringProduct.optionGroups?.length ? (
+                    <div className="space-y-4">
+                      {configuringProduct.optionGroups.map((group) => {
+                        const selectedValues = selectedOptionValues[group.name] ?? [];
+
+                        return (
+                          <div key={group.name} className="rounded-2xl border border-ink-200 p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <h4 className="text-base font-bold text-ink-950">{group.name}</h4>
+                                <p className="mt-1 text-xs text-ink-500">
+                                  {group.multiple ? 'Seleção múltipla' : 'Seleção única'}
+                                  {group.required ? ' · obrigatório' : ' · opcional'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 space-y-3">
+                              {group.options.map((option) => {
+                                const checked = selectedValues.includes(option.name);
+                                const inputType = group.multiple ? 'checkbox' : 'radio';
+                                const inputName = `group-${group.name}`;
+
+                                return (
+                                  <div
+                                    key={option.name}
+                                    className={`flex cursor-pointer items-center justify-between gap-4 rounded-2xl border px-4 py-3 transition ${
+                                      checked ? 'border-mint-400 bg-mint-50' : 'border-ink-200 bg-white hover:border-ink-300'
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-3">
+                                      <input
+                                        type={inputType}
+                                        name={inputName}
+                                        checked={checked}
+                                        onChange={() => toggleGroupOption(group.name, option.name, Boolean(group.multiple))}
+                                        className="h-4 w-4 accent-ink-900"
+                                      />
+                                      <span>
+                                        <span className="block text-sm font-semibold text-ink-950">{option.name}</span>
+                                        {typeof option.price === 'number' ? (
+                                          <span className="block text-xs text-ink-500">
+                                            {resolveGroupPriceMode(group.name, group.priceMode) === 'replace'
+                                              ? `Preço base: R$ ${formatPrice(option.price)}`
+                                              : `+ R$ ${formatPrice(option.price)}`}
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-ink-200 bg-ink-50 px-4 py-6 text-sm text-ink-500">
+                      Este produto não possui grupos de opções.
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl border border-ink-200 bg-white p-4">
+                    <label className="space-y-1 text-sm">
+                      <span className="font-semibold text-ink-700">Observação do item</span>
+                      <textarea
+                        value={selectedObservation}
+                        onChange={(event) => setSelectedObservation(event.target.value)}
+                        className="min-h-24 w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-mint-400"
+                        placeholder="Ex: sem cebola, pouco molho, ponto da carne..."
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 border-t border-ink-200 px-5 py-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Total do item</p>
+                    <p className="mt-1 text-xl font-black text-ink-950">R$ {formatPrice(configuringPreviewPrice)}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" onClick={closeProductConfig}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={confirmConfiguredProduct}>Adicionar ao pedido</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

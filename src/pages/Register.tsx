@@ -44,8 +44,13 @@ export default function RegisterPage() {
         password: data.password,
       });
       navigate('/dashboard');
-    } catch {
-      setSubmitError('Não foi possível criar sua conta. Verifique os dados e tente novamente.');
+    } catch (err) {
+      const message =
+        (err as any)?.message === 'Network Error' || !(err as any)?.response
+          ? 'Não foi possível conectar ao servidor de cadastro. Verifique se o backend está rodando em http://localhost:3333.'
+          : 'Não foi possível criar sua conta. Verifique os dados e tente novamente.';
+
+      setSubmitError(message);
     }
   };
 
