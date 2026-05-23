@@ -79,10 +79,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(nextToken);
       setUser(nextUser);
     } catch (err: unknown) {
-      // Log detailed server error for debugging (400 body, validation errors, etc.)
+      // Build a friendlier error message for the UI while keeping full details in console
+      const resp = (err as any)?.response;
       // eslint-disable-next-line no-console
-      console.error('[Auth] login error:', (err as any)?.response?.status, (err as any)?.response?.data ?? (err as any)?.message ?? err);
-      throw err;
+      console.error('[Auth] login error detailed:', resp?.status, resp?.data ?? (err as any)?.message ?? err);
+
+      let message = 'Não foi possível conectar ao servidor. Verifique o backend.';
+
+      if (!resp) {
+        // No response at all: network / CORS or server down
+        message = 'Erro de rede ou CORS: impossível alcançar o backend. Verifique se o servidor permite requisições do frontend.';
+      } else if (resp.data) {
+        // Prefer server-provided message when available
+        if (typeof resp.data === 'string') message = resp.data;
+        else if (resp.data.error) message = resp.data.error;
+        else if (resp.data.message) message = resp.data.message;
+        else message = `Erro ${resp.status}: resposta inválida do servidor.`;
+      }
+
+      throw new Error(message);
     }
   }, []);
 
@@ -111,9 +126,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(loginData.token);
       setUser(loginData.user);
     } catch (err: unknown) {
+      const resp = (err as any)?.response;
       // eslint-disable-next-line no-console
-      console.error('[Auth] register error:', (err as any)?.response?.status, (err as any)?.response?.data ?? (err as any)?.message ?? err);
-      throw err;
+      console.error('[Auth] register error detailed:', resp?.status, resp?.data ?? (err as any)?.message ?? err);
+
+      let message = 'Não foi possível conectar ao servidor. Verifique o backend.';
+
+      if (!resp) {
+        message = 'Erro de rede ou CORS: impossível alcançar o backend. Verifique se o servidor permite requisições do frontend.';
+      } else if (resp.data) {
+        if (typeof resp.data === 'string') message = resp.data;
+        else if (resp.data.error) message = resp.data.error;
+        else if (resp.data.message) message = resp.data.message;
+        else message = `Erro ${resp.status}: resposta inválida do servidor.`;
+      }
+
+      throw new Error(message);
     }
   }, []);
 
