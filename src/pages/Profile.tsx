@@ -38,8 +38,10 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [profileData, setProfileData] = useState<ProfileForm | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const { register, handleSubmit, setValue } = useForm<ProfileForm>({
+  const { register, handleSubmit, reset } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
   });
 
@@ -50,26 +52,47 @@ export default function ProfilePage() {
       if (!hasCache) {
         setLoading(true);
       }
+
       try {
         const user = await cachedRequest<{ name?: string; email?: string; avatarUrl?: string | null }>('users/me', async () => {
           const res = await api.get('/users/me');
           return res.data;
         });
-        setValue('name', user.name ?? '');
-        setValue('email', user.email ?? '');
+
+        const nextProfile = {
+          name: user.name ?? '',
+          email: user.email ?? '',
+        };
+
+        setProfileData(nextProfile);
+        setIsEditing(false);
+        reset(nextProfile);
+
         if (user.avatarUrl) setAvatarPreview(resolveMediaUrl(user.avatarUrl));
-      } catch (err) {
+      } catch {
         // ignore
       } finally {
         setLoading(false);
       }
     })();
-  }, [setValue]);
+  }, [reset]);
 
   const onAvatarChange = useCallback((f: File | null) => {
     setAvatarFile(f);
   }, []);
 
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    if (profileData) {
+      reset(profileData);
+    }
+
+    setAvatarFile(null);
+    setIsEditing(false);
+  };
 
   async function processImageToJpeg(file: File, size = 400) {
     return new Promise<Blob | null>((resolve) => {
@@ -112,6 +135,8 @@ export default function ProfilePage() {
       }
 
       invalidateCache('users/me');
+      setProfileData(data);
+      setIsEditing(false);
 
       setSuccess('Perfil atualizado com sucesso.');
     } catch (err: unknown) {
@@ -121,26 +146,54 @@ export default function ProfilePage() {
     }
   };
 
+  const isLocked = !isEditing;
+
   return (
     <Section title="Meu Perfil" subtitle="Atualize suas informações pessoais">
       <Card>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-4">
-          <div className="grid gap-4 md:grid-cols-2 p-4">
-            <Input label="Nome" {...register('name')} />
-            <Input label="Email" type="email" {...register('email')} />
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Perfil</p>
+              <p className="text-sm text-ink-600">
+                {isEditing ? 'Edição liberada. Salve para aplicar as mudanças.' : 'Dados bloqueados. Clique em Editar para alterar.'}
+              </p>
+            </div>
+            {isEditing ? (
+              <Button type="button" variant="secondary" size="sm" onClick={handleCancelEdit}>
+                Cancelar edição
+              </Button>
+            ) : (
+              <Button type="button" variant="secondary" size="sm" onClick={handleEdit}>
+                Editar formulário
+              </Button>
+            )}
+          </div>
+
+          <div className="grid gap-4 p-4 md:grid-cols-2">
+            <Input label="Nome" {...register('name')} disabled={isLocked} />
+            <Input label="Email" type="email" {...register('email')} disabled={isLocked} />
           </div>
 
           <div className="grid gap-4 md:grid-cols-1">
             <div>
-              <AvatarUploader initialUrl={avatarPreview} onChange={onAvatarChange} label="Foto do usuario" inputId="user-avatar" />
+              <AvatarUploader
+                initialUrl={avatarPreview}
+                onChange={onAvatarChange}
+                label="Foto do usuario"
+                inputId="user-avatar"
+                disabled={isLocked}
+              />
               <p className="mt-2 text-xs text-ink-500">Tamanho recomendado: 400x400px</p>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button type="submit" isLoading={loading}>
-              Salvar
-            </Button>
+            {isEditing ? (
+              <Button type="submit" isLoading={loading}>
+                Salvar
+              </Button>
+            ) : null}
             <button
               type="button"
               onClick={() => setPasswordOpen(true)}
@@ -149,8 +202,7 @@ export default function ProfilePage() {
               Alterar senha
             </button>
             {submitError && <Alert type="error">{submitError}</Alert>}
-        {success && <Alert type="success">{success}</Alert>}
-
+            {success && <Alert type="success">{success}</Alert>}
           </div>
         </form>
       </Card>

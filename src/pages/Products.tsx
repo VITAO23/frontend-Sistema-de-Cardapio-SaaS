@@ -644,13 +644,13 @@ export default function ProductsPage() {
                       </p>
                     ) : null}
                   </div>
-                  <div className="flex items-center justify-between border-t border-ink-100 pt-3">
-                    <span className="font-semibold text-ink-900">
+                  <div className="border-t border-ink-100 pt-3">
+                    <div className="mb-3 font-semibold text-ink-900">
                       {Number(product.price).toLocaleString('pt-BR', {
                         style: 'currency',
                         currency: 'BRL',
                       })}
-                    </span>
+                    </div>
                     <div className="flex gap-1">
                       <Button variant="secondary" size="sm" onClick={() => startEdit(product)}>
                         Editar

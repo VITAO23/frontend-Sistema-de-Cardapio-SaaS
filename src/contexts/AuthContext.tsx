@@ -1,5 +1,6 @@
-import { createContext, useCallback, useMemo, useState } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import axios from 'axios';
 import { api } from '../services/api';
 
 export type User = {
@@ -24,6 +25,11 @@ type SessionResponse = {
   user?: User;
 };
 
+type ApiErrorData = {
+  error?: string;
+  message?: string;
+};
+
 type AuthContextValue = {
   user: User | null;
   token: string | null;
@@ -35,6 +41,11 @@ type AuthContextValue = {
 
 const STORAGE_TOKEN_KEY = 'token';
 const STORAGE_USER_KEY = 'user';
+
+const clearSession = () => {
+  localStorage.removeItem(STORAGE_TOKEN_KEY);
+  localStorage.removeItem(STORAGE_USER_KEY);
+};
 
 const persistSession = (nextToken: string, nextUser: User) => {
   localStorage.setItem(STORAGE_TOKEN_KEY, nextToken);
@@ -61,6 +72,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(STORAGE_TOKEN_KEY));
   const [user, setUser] = useState<User | null>(() => readStoredUser());
 
+  useEffect(() => {
+    const handleUnload = () => {
+      clearSession();
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
+    window.addEventListener('pagehide', handleUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+      window.removeEventListener('pagehide', handleUnload);
+    };
+  }, []);
+
   const login = useCallback(async ({ email, password }: LoginInput) => {
     // Log request payload for debugging
     const payload = { email, password };
@@ -80,9 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextUser);
     } catch (err: unknown) {
       // Build a friendlier error message for the UI while keeping full details in console
-      const resp = (err as any)?.response;
+      const resp = axios.isAxiosError(err) ? err.response : undefined;
       // eslint-disable-next-line no-console
-      console.error('[Auth] login error detailed:', resp?.status, resp?.data ?? (err as any)?.message ?? err);
+      console.error('[Auth] login error detailed:', resp?.status, resp?.data ?? (axios.isAxiosError(err) ? err.message : err));
 
       let message = 'Não foi possível conectar ao servidor. Verifique o backend.';
 
@@ -91,9 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         message = 'Erro de rede ou CORS: impossível alcançar o backend. Verifique se o servidor permite requisições do frontend.';
       } else if (resp.data) {
         // Prefer server-provided message when available
-        if (typeof resp.data === 'string') message = resp.data;
-        else if (resp.data.error) message = resp.data.error;
-        else if (resp.data.message) message = resp.data.message;
+        const responseData = resp.data as ApiErrorData | string;
+
+        if (typeof responseData === 'string') message = responseData;
+        else if (responseData.error) message = responseData.error;
+        else if (responseData.message) message = responseData.message;
         else message = `Erro ${resp.status}: resposta inválida do servidor.`;
       }
 
@@ -126,18 +153,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(loginData.token);
       setUser(loginData.user);
     } catch (err: unknown) {
-      const resp = (err as any)?.response;
+      const resp = axios.isAxiosError(err) ? err.response : undefined;
       // eslint-disable-next-line no-console
-      console.error('[Auth] register error detailed:', resp?.status, resp?.data ?? (err as any)?.message ?? err);
+      console.error('[Auth] register error detailed:', resp?.status, resp?.data ?? (axios.isAxiosError(err) ? err.message : err));
 
       let message = 'Não foi possível conectar ao servidor. Verifique o backend.';
 
       if (!resp) {
         message = 'Erro de rede ou CORS: impossível alcançar o backend. Verifique se o servidor permite requisições do frontend.';
       } else if (resp.data) {
-        if (typeof resp.data === 'string') message = resp.data;
-        else if (resp.data.error) message = resp.data.error;
-        else if (resp.data.message) message = resp.data.message;
+        const responseData = resp.data as ApiErrorData | string;
+
+        if (typeof responseData === 'string') message = responseData;
+        else if (responseData.error) message = responseData.error;
+        else if (responseData.message) message = responseData.message;
         else message = `Erro ${resp.status}: resposta inválida do servidor.`;
       }
 
@@ -146,8 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_TOKEN_KEY);
-    localStorage.removeItem(STORAGE_USER_KEY);
+    clearSession();
 
     setToken(null);
     setUser(null);

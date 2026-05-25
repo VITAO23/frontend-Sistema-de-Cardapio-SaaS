@@ -5,9 +5,16 @@ type Props = {
   onChange?: (file: File | null) => void;
   label?: string;
   inputId?: string;
+  disabled?: boolean;
 };
 
-export default function AvatarUploader({ initialUrl = null, onChange, label, inputId = 'avatar' }: Props) {
+export default function AvatarUploader({
+  initialUrl = null,
+  onChange,
+  label,
+  inputId = 'avatar',
+  disabled = false,
+}: Props) {
   const [preview, setPreview] = useState<string | null>(initialUrl);
   const [file, setFile] = useState<File | null>(null);
   const objectUrlRef = useRef<string | null>(null);
@@ -73,9 +80,14 @@ export default function AvatarUploader({ initialUrl = null, onChange, label, inp
             {label}
           </label>
         ) : null}
-        <input id={inputId} type="file" accept="image/*" onChange={handleFile} />
+        <input id={inputId} type="file" accept="image/*" onChange={handleFile} disabled={disabled} />
         <div className="mt-2 flex gap-2">
-          <button type="button" className="rounded-xl border px-3 py-1 text-xs" onClick={handleRemove}>
+          <button
+            type="button"
+            className="rounded-xl border px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={handleRemove}
+            disabled={disabled}
+          >
             Remover
           </button>
         </div>
