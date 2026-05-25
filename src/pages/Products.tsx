@@ -61,6 +61,13 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
 const imageBaseUrl = API_URL.replace(/\/$/, '');
 const PRODUCT_OPTION_GROUPS_KEY = 'product-option-groups';
 
+function resolveMediaUrl(url?: string | null) {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+
+  return `${imageBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 function normalizeList<T>(payload: T[] | { [key: string]: T[] } | unknown, key: string) {
   if (Array.isArray(payload)) {
     return payload;
@@ -556,7 +563,7 @@ export default function ProductsPage() {
                 <img src={previewSource} alt="Preview" className="h-full w-full object-cover" />
               ) : editingProduct?.imageUrl ? (
                 <img
-                  src={`${imageBaseUrl}/${editingProduct.imageUrl.replace(/^\//, '')}`}
+                  src={resolveMediaUrl(editingProduct.imageUrl) ?? undefined}
                   alt={editingProduct.name}
                   className="h-full w-full object-cover"
                 />
@@ -603,7 +610,7 @@ export default function ProductsPage() {
                 {product.imageUrl ? (
                   <div className="aspect-[4/3] bg-ink-100">
                     <img
-                      src={`${imageBaseUrl}/${product.imageUrl.replace(/^\//, '')}`}
+                        src={resolveMediaUrl(product.imageUrl) ?? undefined}
                       alt={product.name}
                       className="h-full w-full object-cover"
                     />
