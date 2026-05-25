@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Alert, Badge, Button, Card, Input, Section } from '../components';
-import { api } from '../services/api';
+import { api, cachedRequest, hasFreshCache, invalidateCache, readCache } from '../services/api';
 
 const categorySchema = z.object({
   name: z.string().min(2, 'Informe o nome da categoria.'),
@@ -17,8 +17,8 @@ type Category = {
 };
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>(() => readCache<Category[]>('categories') ?? []);
+  const [loading, setLoading] = useState(() => !readCache<Category[]>('categories'));
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const {
@@ -32,14 +32,23 @@ export default function CategoriesPage() {
   });
 
   const loadCategories = async () => {
-    setLoading(true);
+    const hasCache = hasFreshCache('categories');
+
+    if (!hasCache) {
+      setLoading(true);
+    }
+
     try {
-      const response = await api.get('/categories');
-      const data = response.data as { categories?: Category[] } | Category[];
-      const list = Array.isArray(data) ? data : data.categories ?? [];
+      const list = await cachedRequest('categories', async () => {
+        const response = await api.get('/categories');
+        const data = response.data as { categories?: Category[] } | Category[];
+        return Array.isArray(data) ? data : data.categories ?? [];
+      });
       setCategories(list);
     } finally {
-      setLoading(false);
+      if (!hasCache) {
+        setLoading(false);
+      }
     }
   };
 
@@ -55,6 +64,8 @@ export default function CategoriesPage() {
       } else {
         await api.post('/categories', data);
       }
+      invalidateCache('categories');
+      invalidateCache('products');
       reset();
       setEditingId(null);
       await loadCategories();
@@ -77,6 +88,8 @@ export default function CategoriesPage() {
     setSubmitError(null);
     try {
       await api.delete(`/categories/${categoryId}`);
+      invalidateCache('categories');
+      invalidateCache('products');
       await loadCategories();
     } catch {
       setSubmitError('Não foi possível excluir a categoria.');

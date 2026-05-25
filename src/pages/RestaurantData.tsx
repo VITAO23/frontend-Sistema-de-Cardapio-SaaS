@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { z } from 'zod';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { api } from '../services/api';
+import { api, cachedRequest, hasFreshCache, invalidateCache, readCache } from '../services/api';
 import { Alert, AvatarUploader, Button, Card, Input, Section, Select, Textarea } from '../components';
 
 const restaurantSchema = z.object({
@@ -114,7 +114,7 @@ async function processImageToJpeg(file: File, size = 400) {
 }
 
 export default function RestaurantDataPage() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !readCache<RestaurantResponse>('restaurants/me'));
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -131,11 +131,17 @@ export default function RestaurantDataPage() {
 
   useEffect(() => {
     void (async () => {
-      setLoading(true);
+      const hasCache = hasFreshCache('restaurants/me');
+
+      if (!hasCache) {
+        setLoading(true);
+      }
       setSubmitError(null);
       try {
-        const res = await api.get<RestaurantResponse>('/restaurants/me');
-        const data = res.data;
+        const data = await cachedRequest<RestaurantResponse>('restaurants/me', async () => {
+          const res = await api.get<RestaurantResponse>('/restaurants/me');
+          return res.data;
+        });
         setRestaurantReady(true);
         reset({
           ...emptyFormValues,
@@ -268,6 +274,7 @@ export default function RestaurantDataPage() {
 
       const response = await api.put<RestaurantResponse>('/restaurants/me', payload);
       const savedRestaurant = response.data;
+      invalidateCache('restaurants/me');
       setRestaurantReady(true);
       setSlug(savedRestaurant.slug ?? slug);
       if (savedRestaurant.logoUrl) setLogoPreview(resolveMediaUrl(savedRestaurant.logoUrl));
@@ -302,6 +309,7 @@ export default function RestaurantDataPage() {
           await api.post('/restaurants/me/logo', logoForm, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
+          invalidateCache('restaurants/me');
         }
       }
 

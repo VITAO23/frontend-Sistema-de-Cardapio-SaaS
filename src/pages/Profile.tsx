@@ -3,7 +3,7 @@ import axios from 'axios';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { api } from '../services/api';
+import { api, cachedRequest, hasFreshCache, invalidateCache, readCache } from '../services/api';
 import { Input, Button, Section, Card, Alert, AvatarUploader } from '../components';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 
@@ -33,7 +33,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export default function ProfilePage() {
   const [passwordOpen, setPasswordOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !readCache<{ name?: string; email?: string; avatarUrl?: string | null }>('users/me'));
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -45,10 +45,16 @@ export default function ProfilePage() {
 
   useEffect(() => {
     void (async () => {
-      setLoading(true);
+      const hasCache = hasFreshCache('users/me');
+
+      if (!hasCache) {
+        setLoading(true);
+      }
       try {
-        const res = await api.get('/users/me');
-        const user = res.data;
+        const user = await cachedRequest<{ name?: string; email?: string; avatarUrl?: string | null }>('users/me', async () => {
+          const res = await api.get('/users/me');
+          return res.data;
+        });
         setValue('name', user.name ?? '');
         setValue('email', user.email ?? '');
         if (user.avatarUrl) setAvatarPreview(resolveMediaUrl(user.avatarUrl));
@@ -104,6 +110,8 @@ export default function ProfilePage() {
           });
         }
       }
+
+      invalidateCache('users/me');
 
       setSuccess('Perfil atualizado com sucesso.');
     } catch (err: unknown) {

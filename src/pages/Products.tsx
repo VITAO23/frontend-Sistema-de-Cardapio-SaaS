@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Alert, Badge, Button, Card, Input, Section, Select, Textarea } from '../components';
-import { api } from '../services/api';
+import { api, cachedRequest, hasFreshCache, invalidateCache, readCache } from '../services/api';
 
 type Category = {
   id: string;
@@ -127,9 +127,11 @@ function saveLocalOptionGroups(productId: string, optionGroups: ProductOptionGro
 }
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>(() => readCache<Product[]>('products') ?? []);
+  const [categories, setCategories] = useState<Category[]>(() => readCache<Category[]>('categories') ?? []);
+  const [loading, setLoading] = useState(
+    () => !(readCache<Product[]>('products') && readCache<Category[]>('categories')),
+  );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -157,18 +159,30 @@ export default function ProductsPage() {
   );
 
   const loadData = async () => {
-    setLoading(true);
+    const hasCache = hasFreshCache('products') && hasFreshCache('categories');
+
+    if (!hasCache) {
+      setLoading(true);
+    }
 
     try {
-      const [productsResponse, categoriesResponse] = await Promise.all([
-        api.get('/products'),
-        api.get('/categories'),
+      const [nextProducts, nextCategories] = await Promise.all([
+        cachedRequest('products', async () => {
+          const productsResponse = await api.get('/products');
+          return normalizeList<Product>(productsResponse.data, 'products');
+        }),
+        cachedRequest('categories', async () => {
+          const categoriesResponse = await api.get('/categories');
+          return normalizeList<Category>(categoriesResponse.data, 'categories');
+        }),
       ]);
 
-      setProducts(normalizeList<Product>(productsResponse.data, 'products'));
-      setCategories(normalizeList<Category>(categoriesResponse.data, 'categories'));
+      setProducts(nextProducts);
+      setCategories(nextCategories);
     } finally {
-      setLoading(false);
+      if (!hasCache) {
+        setLoading(false);
+      }
     }
   };
 
@@ -266,6 +280,7 @@ export default function ProductsPage() {
         }
       }
 
+      invalidateCache('products');
       reset();
       setSelectedFile(null);
       setEditingId(null);
@@ -314,6 +329,7 @@ export default function ProductsPage() {
 
     try {
       await api.delete(`/products/${productId}`);
+      invalidateCache('products');
       await loadData();
     } catch {
       setSubmitError('Nao foi possivel excluir o produto.');
