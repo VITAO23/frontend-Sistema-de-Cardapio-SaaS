@@ -58,7 +58,7 @@ export default function ProfilePage() {
       try {
         setLoadError(null);
         const user = await cachedRequest<{ name?: string; email?: string; avatarUrl?: string | null }>('users/me', async () => {
-          const res = await api.get(API_ENDPOINTS.UPLOAD_AVATAR);
+          const res = await api.get(API_ENDPOINTS.USERS_ME);
           return res.data;
         });
 
