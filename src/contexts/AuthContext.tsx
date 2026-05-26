@@ -88,10 +88,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const handleUnload = () => {
-      clearSession();
-    };
-
     const handleForcedLogout = () => {
       clearSession();
       setToken(null);
@@ -104,16 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    window.addEventListener('beforeunload', handleUnload);
-    window.addEventListener('pagehide', handleUnload);
     window.addEventListener('auth:logout', handleForcedLogout as EventListener);
     window.addEventListener('storage', handleStorageChange);
 
     syncSessionState();
 
     return () => {
-      window.removeEventListener('beforeunload', handleUnload);
-      window.removeEventListener('pagehide', handleUnload);
       window.removeEventListener('auth:logout', handleForcedLogout as EventListener);
       window.removeEventListener('storage', handleStorageChange);
     };
