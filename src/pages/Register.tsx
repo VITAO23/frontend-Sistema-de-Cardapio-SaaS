@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -44,13 +45,16 @@ export default function RegisterPage() {
         password: data.password,
       });
       navigate('/dashboard');
-    } catch (err) {
-      const message =
-        (err as any)?.message === 'Network Error' || !(err as any)?.response
-          ? 'Não foi possível conectar ao servidor de cadastro. Verifique se a API está disponível e se a URL pública está configurada.'
-          : 'Não foi possível criar sua conta. Verifique os dados e tente novamente.';
+    } catch (err: unknown) {
+      const isNetworkError = axios.isAxiosError(err)
+        ? !err.response
+        : err instanceof Error && err.message === 'Network Error';
 
-      setSubmitError(message);
+      setSubmitError(
+        isNetworkError
+          ? 'Não foi possível conectar ao servidor de cadastro. Verifique se a API está disponível e se a URL pública está configurada.'
+          : 'Não foi possível criar sua conta. Verifique os dados e tente novamente.',
+      );
     }
   };
 
