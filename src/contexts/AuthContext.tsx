@@ -72,19 +72,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(STORAGE_TOKEN_KEY));
   const [user, setUser] = useState<User | null>(() => readStoredUser());
 
+  const syncSessionState = useCallback(() => {
+    const nextToken = localStorage.getItem(STORAGE_TOKEN_KEY);
+    const nextUser = readStoredUser();
+
+    if (!nextToken || !nextUser) {
+      clearSession();
+      setToken(null);
+      setUser(null);
+      return;
+    }
+
+    setToken(nextToken);
+    setUser(nextUser);
+  }, []);
+
   useEffect(() => {
     const handleUnload = () => {
       clearSession();
     };
 
+    const handleForcedLogout = () => {
+      clearSession();
+      setToken(null);
+      setUser(null);
+    };
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === STORAGE_TOKEN_KEY || event.key === STORAGE_USER_KEY || event.key === null) {
+        syncSessionState();
+      }
+    };
+
     window.addEventListener('beforeunload', handleUnload);
     window.addEventListener('pagehide', handleUnload);
+    window.addEventListener('auth:logout', handleForcedLogout as EventListener);
+    window.addEventListener('storage', handleStorageChange);
+
+    syncSessionState();
 
     return () => {
       window.removeEventListener('beforeunload', handleUnload);
       window.removeEventListener('pagehide', handleUnload);
+      window.removeEventListener('auth:logout', handleForcedLogout as EventListener);
+      window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, [syncSessionState]);
 
   const login = useCallback(async ({ email, password }: LoginInput) => {
     // Log request payload for debugging
