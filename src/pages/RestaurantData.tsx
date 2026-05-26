@@ -93,6 +93,30 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function mapRestaurantToForm(data: RestaurantResponse): RestaurantForm {
+  return {
+    ...emptyFormValues,
+    name: data.name ?? '',
+    address: data.address ?? '',
+    street: data.street ?? '',
+    number: data.number ?? '',
+    complement: data.complement ?? '',
+    neighborhood: data.neighborhood ?? '',
+    city: data.city ?? '',
+    state: data.state ?? '',
+    zipCode: data.zipCode ?? '',
+    whatsapp: data.whatsapp ?? '',
+    status: data.status ?? 'open',
+    openingHours: data.openingHours ?? '',
+    deliveryEnabled: data.deliveryEnabled ?? true,
+    deliveryTime: data.deliveryTime ?? '',
+    pickupTime: data.pickupTime ?? '',
+    deliveryInfo: data.deliveryInfo ?? '',
+    deliveryFee: data.deliveryFee ?? undefined,
+    deliveryRadiusKm: data.deliveryRadiusKm ?? undefined,
+  };
+}
+
 async function processImageToJpeg(file: File, size = 400) {
   return new Promise<Blob | null>((resolve) => {
     const img = new Image();
@@ -121,6 +145,8 @@ export default function RestaurantDataPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [slug, setSlug] = useState('');
   const [restaurantReady, setRestaurantReady] = useState(false);
+  const [restaurantData, setRestaurantData] = useState<RestaurantResponse | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -142,33 +168,17 @@ export default function RestaurantDataPage() {
           const res = await api.get<RestaurantResponse>('/restaurants/me');
           return res.data;
         });
+        setRestaurantData(data);
         setRestaurantReady(true);
-        reset({
-          ...emptyFormValues,
-          name: data.name ?? '',
-          address: data.address ?? '',
-          street: data.street ?? '',
-          number: data.number ?? '',
-          complement: data.complement ?? '',
-          neighborhood: data.neighborhood ?? '',
-          city: data.city ?? '',
-          state: data.state ?? '',
-          zipCode: data.zipCode ?? '',
-          whatsapp: data.whatsapp ?? '',
-          status: data.status ?? 'open',
-          openingHours: data.openingHours ?? '',
-          deliveryEnabled: data.deliveryEnabled ?? true,
-          deliveryTime: data.deliveryTime ?? '',
-          pickupTime: data.pickupTime ?? '',
-          deliveryInfo: data.deliveryInfo ?? '',
-          deliveryFee: data.deliveryFee ?? undefined,
-          deliveryRadiusKm: data.deliveryRadiusKm ?? undefined,
-        });
+        setIsEditing(false);
+        reset(mapRestaurantToForm(data));
         if (data.logoUrl) setLogoPreview(resolveMediaUrl(data.logoUrl));
         if (data.slug) setSlug(data.slug);
       } catch (err) {
         if (axios.isAxiosError(err) && err.response?.status === 404) {
           setRestaurantReady(false);
+          setRestaurantData(null);
+          setIsEditing(true);
           reset(emptyFormValues);
           setSlug('');
           setLogoPreview(null);
@@ -276,29 +286,11 @@ export default function RestaurantDataPage() {
       const savedRestaurant = response.data;
       invalidateCache('restaurants/me');
       setRestaurantReady(true);
+      setRestaurantData(savedRestaurant);
+      setIsEditing(false);
       setSlug(savedRestaurant.slug ?? slug);
       if (savedRestaurant.logoUrl) setLogoPreview(resolveMediaUrl(savedRestaurant.logoUrl));
-      reset({
-        ...emptyFormValues,
-        name: savedRestaurant.name ?? data.name,
-        address: savedRestaurant.address ?? payload.address,
-        street: savedRestaurant.street ?? data.street,
-        number: savedRestaurant.number ?? data.number,
-        complement: savedRestaurant.complement ?? data.complement,
-        neighborhood: savedRestaurant.neighborhood ?? data.neighborhood,
-        city: savedRestaurant.city ?? data.city,
-        state: savedRestaurant.state ?? data.state,
-        zipCode: savedRestaurant.zipCode ?? data.zipCode,
-        whatsapp: savedRestaurant.whatsapp ?? data.whatsapp,
-        status: savedRestaurant.status ?? data.status,
-        openingHours: savedRestaurant.openingHours ?? data.openingHours,
-        deliveryEnabled: savedRestaurant.deliveryEnabled ?? data.deliveryEnabled,
-        deliveryTime: savedRestaurant.deliveryTime ?? data.deliveryTime,
-        pickupTime: savedRestaurant.pickupTime ?? data.pickupTime,
-        deliveryInfo: savedRestaurant.deliveryInfo ?? data.deliveryInfo,
-        deliveryFee: savedRestaurant.deliveryFee ?? data.deliveryFee,
-        deliveryRadiusKm: savedRestaurant.deliveryRadiusKm ?? data.deliveryRadiusKm,
-      });
+      reset(mapRestaurantToForm({ ...savedRestaurant, address: savedRestaurant.address ?? payload.address }));
 
       if (logoFile) {
         const blob = await processImageToJpeg(logoFile, 400);
@@ -321,6 +313,24 @@ export default function RestaurantDataPage() {
     }
   };
 
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    if (restaurantData) {
+      reset(mapRestaurantToForm(restaurantData));
+    } else {
+      reset(emptyFormValues);
+    }
+
+    setLogoFile(null);
+    setIsEditing(false);
+  };
+
+  const isFormLocked = restaurantReady && !isEditing;
+  const showSubmitAction = !restaurantReady || isEditing;
+
   return (
     <Section
       title="Dados do Restaurante"
@@ -334,23 +344,52 @@ export default function RestaurantDataPage() {
             </Alert>
           )}
 
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink-200 bg-ink-50 p-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Formulário</p>
+              <p className="text-sm text-ink-600">
+                {restaurantReady
+                  ? isEditing
+                    ? 'Edição liberada. Salve para aplicar as mudanças.'
+                    : 'Dados bloqueados. Clique em Editar para alterar.'
+                  : 'Preencha os dados e salve para criar seu restaurante.'}
+              </p>
+            </div>
+            {restaurantReady ? (
+              isEditing ? (
+                <Button type="button" variant="secondary" size="sm" onClick={handleCancelEdit}>
+                  Cancelar edição
+                </Button>
+              ) : (
+                <Button type="button" variant="secondary" size="sm" onClick={handleEdit}>
+                  Editar formulário
+                </Button>
+              )
+            ) : null}
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2 p-4">
-            <Input label="Nome do restaurante" {...register('name')} />
-            <Input label="WhatsApp" placeholder="(31) 99999-9999" {...register('whatsapp')} />
-            <Input label="CEP" placeholder="30100-000" {...register('zipCode')} />
-            <Input label="Estado" placeholder="MG" {...register('state')} />
-            <Input label="Cidade" placeholder="Belo Horizonte" {...register('city')} />
-            <Input label="Bairro" placeholder="Centro" {...register('neighborhood')} />
+            <Input label="Nome do restaurante" {...register('name')} disabled={isFormLocked} />
+            <Input label="WhatsApp" placeholder="(31) 99999-9999" {...register('whatsapp')} disabled={isFormLocked} />
+            <Input label="CEP" placeholder="30100-000" {...register('zipCode')} disabled={isFormLocked} />
+            <Input label="Estado" placeholder="MG" {...register('state')} disabled={isFormLocked} />
+            <Input label="Cidade" placeholder="Belo Horizonte" {...register('city')} disabled={isFormLocked} />
+            <Input label="Bairro" placeholder="Centro" {...register('neighborhood')} disabled={isFormLocked} />
           </div>
 
           <div className="grid gap-4 md:grid-cols-3 p-4">
-            <Input label="Rua" placeholder="Rua das Flores" {...register('street')} />
-            <Input label="Número" placeholder="123" {...register('number')} />
-            <Input label="Complemento" placeholder="Loja A" {...register('complement')} />
+            <Input label="Rua" placeholder="Rua das Flores" {...register('street')} disabled={isFormLocked} />
+            <Input label="Número" placeholder="123" {...register('number')} disabled={isFormLocked} />
+            <Input label="Complemento" placeholder="Loja A" {...register('complement')} disabled={isFormLocked} />
           </div>
 
           <div className="p-4">
-            <Input label="Endereço completo" placeholder="Rua das Flores, 123 - Centro, Cidade" {...register('address')} />
+            <Input
+              label="Endereço completo"
+              placeholder="Rua das Flores, 123 - Centro, Cidade"
+              {...register('address')}
+              disabled={isFormLocked}
+            />
             <p className="mt-1 text-xs text-ink-500">Se vazio, o sistema pode montar o endereço com rua, número e cidade.</p>
           </div>
 
@@ -366,29 +405,38 @@ export default function RestaurantDataPage() {
                   { value: 'open', label: 'Aberto' },
                   { value: 'closed', label: 'Fechado' },
                 ]}
+                disabled={isFormLocked}
                 {...register('status')}
               />
 
               <Input
                 label="Horarios"
                 placeholder="ex: Seg - Dom | 18:00 - 23:00"
+                disabled={isFormLocked}
                 {...register('openingHours')}
               />
 
               <label className="flex items-center gap-3 rounded-xl border border-ink-200 bg-ink-50 px-4 py-3 text-sm font-medium text-ink-700">
-                <input type="checkbox" className="h-4 w-4 rounded border-ink-300" {...register('deliveryEnabled')} />
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-ink-300"
+                  disabled={isFormLocked}
+                  {...register('deliveryEnabled')}
+                />
                 Entrega habilitada
               </label>
 
               <Input
                 label="Entrega (tempo medio)"
                 placeholder="00 - 00 min"
+                disabled={isFormLocked}
                 {...register('deliveryTime')}
               />
 
               <Input
                 label="Retirada (tempo medio)"
                 placeholder="00 - 00 min"
+                disabled={isFormLocked}
                 {...register('pickupTime')}
               />
 
@@ -397,6 +445,7 @@ export default function RestaurantDataPage() {
                 type="number"
                 step="0.01"
                 placeholder="6.00"
+                disabled={isFormLocked}
                 {...register('deliveryFee')}
               />
 
@@ -405,6 +454,7 @@ export default function RestaurantDataPage() {
                 type="number"
                 step="0.1"
                 placeholder="6"
+                disabled={isFormLocked}
                 {...register('deliveryRadiusKm')}
               />
             </div>
@@ -414,6 +464,7 @@ export default function RestaurantDataPage() {
                 label="Info de entrega"
                 placeholder="Ex: Entregamos em um raio de 6 km. Taxa a partir de R$ 6,00."
                 rows={2}
+                disabled={isFormLocked}
                 {...register('deliveryInfo')}
               />
             </div>
@@ -424,15 +475,23 @@ export default function RestaurantDataPage() {
 
           <div className="grid gap-4 md:grid-cols-1">
             <div>
-              <AvatarUploader initialUrl={logoPreview} onChange={onLogoChange} label="Logo da loja" inputId="store-logo" />
+              <AvatarUploader
+                initialUrl={logoPreview}
+                onChange={onLogoChange}
+                label="Logo da loja"
+                inputId="store-logo"
+                disabled={isFormLocked}
+              />
               <p className="mt-2 text-xs text-ink-500">Tamanho recomendado: 400x400px</p>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button type="submit" isLoading={loading}>
-              Salvar
-            </Button>
+            {showSubmitAction ? (
+              <Button type="submit" isLoading={loading}>
+                Salvar
+              </Button>
+            ) : null}
             {submitError && <Alert type="error">{submitError}</Alert>}
             {success && <Alert type="success">{success}</Alert>}
           </div>
