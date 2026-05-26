@@ -14,7 +14,7 @@ const profileSchema = z.object({
 
 type ProfileForm = z.infer<typeof profileSchema>;
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+const API_URL = import.meta.env.VITE_API_URL || 'https://api-saas-sistema-cardapio.onrender.com';
 
 function resolveMediaUrl(url?: string | null) {
   if (!url) return null;

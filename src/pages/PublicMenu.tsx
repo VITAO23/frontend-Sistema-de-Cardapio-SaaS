@@ -72,7 +72,7 @@ type Restaurant = {
   categories: Category[];
 };
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+const API_URL = import.meta.env.VITE_API_URL || 'https://api-saas-sistema-cardapio.onrender.com';
 const PRODUCT_OPTION_GROUPS_KEY = 'product-option-groups';
 
 function createDemoRestaurant(slug?: string): Restaurant {

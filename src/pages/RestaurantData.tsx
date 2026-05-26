@@ -77,7 +77,7 @@ const emptyFormValues: RestaurantForm = {
   deliveryRadiusKm: undefined,
 };
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+const API_URL = import.meta.env.VITE_API_URL || 'https://api-saas-sistema-cardapio.onrender.com';
 function resolveMediaUrl(url?: string | null) {
   if (!url) return null;
   if (/^https?:\/\//i.test(url)) return url;
