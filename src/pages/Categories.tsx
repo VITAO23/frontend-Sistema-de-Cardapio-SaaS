@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Alert, Badge, Button, Card, Input, Section } from '../components';
 import { api, cachedRequest, hasFreshCache, invalidateCache, readCache } from '../services/api';
+import { API_ENDPOINTS } from '../services/endpoints';
 
 const categorySchema = z.object({
   name: z.string().min(2, 'Informe o nome da categoria.'),
@@ -40,7 +41,7 @@ export default function CategoriesPage() {
 
     try {
       const list = await cachedRequest('categories', async () => {
-        const response = await api.get('/categories');
+        const response = await api.get(API_ENDPOINTS.CATEGORIES);
         const data = response.data as { categories?: Category[] } | Category[];
         return Array.isArray(data) ? data : data.categories ?? [];
       });
@@ -60,9 +61,9 @@ export default function CategoriesPage() {
     setSubmitError(null);
     try {
       if (editingId) {
-        await api.put(`/categories/${editingId}`, data);
+        await api.put(API_ENDPOINTS.CATEGORY(editingId), data);
       } else {
-        await api.post('/categories', data);
+        await api.post(API_ENDPOINTS.CATEGORIES, data);
       }
       invalidateCache('categories');
       invalidateCache('products');
@@ -87,7 +88,7 @@ export default function CategoriesPage() {
   const handleDelete = async (categoryId: string) => {
     setSubmitError(null);
     try {
-      await api.delete(`/categories/${categoryId}`);
+      await api.delete(API_ENDPOINTS.CATEGORY(categoryId));
       invalidateCache('categories');
       invalidateCache('products');
       await loadCategories();

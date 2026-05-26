@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Alert, Badge, Button, Card, Input, Section, Select, Textarea } from '../components';
 import { api, cachedRequest, hasFreshCache, invalidateCache, readCache } from '../services/api';
+import { API_BASE_URL, API_ENDPOINTS } from '../services/endpoints';
 
 type Category = {
   id: string;
@@ -57,8 +58,7 @@ const productSchema = z.object({
 
 type ProductFormData = z.infer<typeof productSchema>;
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api-saas-sistema-cardapio.onrender.com';
-const imageBaseUrl = API_URL.replace(/\/$/, '');
+const imageBaseUrl = API_BASE_URL.replace(/\/$/, '');
 const PRODUCT_OPTION_GROUPS_KEY = 'product-option-groups';
 
 function resolveMediaUrl(url?: string | null) {
@@ -168,11 +168,11 @@ export default function ProductsPage() {
     try {
       const [nextProducts, nextCategories] = await Promise.all([
         cachedRequest('products', async () => {
-          const productsResponse = await api.get('/products');
+          const productsResponse = await api.get(API_ENDPOINTS.PRODUCTS);
           return normalizeList<Product>(productsResponse.data, 'products');
         }),
         cachedRequest('categories', async () => {
-          const categoriesResponse = await api.get('/categories');
+          const categoriesResponse = await api.get(API_ENDPOINTS.CATEGORIES);
           return normalizeList<Category>(categoriesResponse.data, 'categories');
         }),
       ]);
@@ -266,12 +266,12 @@ export default function ProductsPage() {
       }
 
       if (editingId) {
-        await api.put(`/products/${editingId}`, formData, {
+        await api.put(API_ENDPOINTS.PRODUCT(editingId), formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         saveLocalOptionGroups(editingId, optionGroups);
       } else {
-        const response = await api.post('/products', formData, {
+        const response = await api.post(API_ENDPOINTS.PRODUCTS, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         const createdId = response.data?.id ?? response.data?.product?.id;
@@ -328,7 +328,7 @@ export default function ProductsPage() {
     setSubmitError(null);
 
     try {
-      await api.delete(`/products/${productId}`);
+      await api.delete(API_ENDPOINTS.PRODUCT(productId));
       invalidateCache('products');
       await loadData();
     } catch {

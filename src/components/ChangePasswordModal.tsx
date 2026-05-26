@@ -8,6 +8,7 @@ import Input from './Input';
 import Card from './Card';
 import Alert from './Alert';
 import { api } from '../services/api';
+import { API_ENDPOINTS } from '../services/endpoints';
 
 const schema = z.object({
   currentPassword: z.string().min(6, 'Informe a senha atual.'),
@@ -48,7 +49,7 @@ export default function ChangePasswordModal({
     setError(null);
     setSuccess(null);
     try {
-      await api.post('/users/me/password', {
+      await api.post(API_ENDPOINTS.CHANGE_PASSWORD, {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       });

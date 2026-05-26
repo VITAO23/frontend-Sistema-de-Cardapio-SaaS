@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_BASE_URL } from './endpoints';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api-saas-sistema-cardapio.onrender.com';
+const API_URL = API_BASE_URL;
 
 type CacheEntry<T> = {
   data: T;

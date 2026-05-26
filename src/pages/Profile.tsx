@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { api, cachedRequest, hasFreshCache, invalidateCache, readCache } from '../services/api';
+import { API_BASE_URL, API_ENDPOINTS } from '../services/endpoints';
 import { Input, Button, Section, Card, Alert, AvatarUploader } from '../components';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 
@@ -14,13 +15,13 @@ const profileSchema = z.object({
 
 type ProfileForm = z.infer<typeof profileSchema>;
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api-saas-sistema-cardapio.onrender.com';
+const imageBaseUrl = API_BASE_URL.replace(/\/$/, '');
 
 function resolveMediaUrl(url?: string | null) {
   if (!url) return null;
   if (/^https?:\/\//i.test(url)) return url;
 
-  return `${API_URL.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
+  return `${imageBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -55,7 +56,7 @@ export default function ProfilePage() {
 
       try {
         const user = await cachedRequest<{ name?: string; email?: string; avatarUrl?: string | null }>('users/me', async () => {
-          const res = await api.get('/users/me');
+          const res = await api.get(API_ENDPOINTS.USERS_ME);
           return res.data;
         });
 
@@ -120,7 +121,7 @@ export default function ProfilePage() {
     setLoading(true);
 
     try {
-      await api.put('/users/me', data);
+      await api.put(API_ENDPOINTS.USERS_ME, data);
 
       if (avatarFile) {
         const blob = await processImageToJpeg(avatarFile, 400);
@@ -128,7 +129,7 @@ export default function ProfilePage() {
           const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
           const avatarForm = new FormData();
           avatarForm.append('avatar', file);
-          await api.post('/users/me/avatar', avatarForm, {
+          await api.post(API_ENDPOINTS.UPLOAD_AVATAR, avatarForm, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
         }

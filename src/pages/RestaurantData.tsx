@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { api, cachedRequest, hasFreshCache, invalidateCache, readCache } from '../services/api';
+import { API_BASE_URL, API_ENDPOINTS } from '../services/endpoints';
 import { Alert, AvatarUploader, Button, Card, Input, Section, Select, Textarea } from '../components';
 
 const restaurantSchema = z.object({
@@ -77,12 +78,13 @@ const emptyFormValues: RestaurantForm = {
   deliveryRadiusKm: undefined,
 };
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api-saas-sistema-cardapio.onrender.com';
+const imageBaseUrl = API_BASE_URL.replace(/\/$/, '');
+
 function resolveMediaUrl(url?: string | null) {
   if (!url) return null;
   if (/^https?:\/\//i.test(url)) return url;
 
-  return `${API_URL.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
+  return `${imageBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -165,7 +167,7 @@ export default function RestaurantDataPage() {
       setSubmitError(null);
       try {
         const data = await cachedRequest<RestaurantResponse>('restaurants/me', async () => {
-          const res = await api.get<RestaurantResponse>('/restaurants/me');
+          const res = await api.get<RestaurantResponse>(API_ENDPOINTS.RESTAURANT);
           return res.data;
         });
         setRestaurantData(data);
@@ -282,7 +284,7 @@ export default function RestaurantDataPage() {
         deliveryRadiusKm: data.deliveryRadiusKm,
       };
 
-      const response = await api.put<RestaurantResponse>('/restaurants/me', payload);
+      const response = await api.put<RestaurantResponse>(API_ENDPOINTS.RESTAURANT, payload);
       const savedRestaurant = response.data;
       invalidateCache('restaurants/me');
       setRestaurantReady(true);
@@ -298,7 +300,7 @@ export default function RestaurantDataPage() {
           const file = new File([blob], 'logo.jpg', { type: 'image/jpeg' });
           const logoForm = new FormData();
           logoForm.append('logo', file);
-          await api.post('/restaurants/me/logo', logoForm, {
+          await api.post(API_ENDPOINTS.RESTAURANT_LOGO, logoForm, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
           invalidateCache('restaurants/me');

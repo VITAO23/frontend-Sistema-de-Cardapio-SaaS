@@ -2,6 +2,7 @@ import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react';
 import axios from 'axios';
 import { api } from '../services/api';
+import { API_ENDPOINTS } from '../services/endpoints';
 
 export type User = {
   id?: string;
@@ -118,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('[Auth] login payload:', payload);
 
     try {
-      const response = await api.post('/login', payload);
+      const response = await api.post(API_ENDPOINTS.LOGIN, payload);
       const { token: nextToken, user: nextUser } = response.data as SessionResponse;
 
       if (!nextToken || !nextUser) {
@@ -157,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const payload = { name, email, password };
 
     try {
-      const response = await api.post('/register', payload);
+      const response = await api.post(API_ENDPOINTS.REGISTER, payload);
       const { token: nextToken, user: nextUser } = response.data as SessionResponse;
 
       if (nextToken && nextUser) {
@@ -167,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const loginResponse = await api.post('/login', payload);
+      const loginResponse = await api.post(API_ENDPOINTS.LOGIN, payload);
       const loginData = loginResponse.data as SessionResponse;
 
       if (!loginData.token || !loginData.user) {
