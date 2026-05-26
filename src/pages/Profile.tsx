@@ -71,7 +71,7 @@ export default function ProfilePage() {
 
         if (user.avatarUrl) setAvatarPreview(resolveMediaUrl(user.avatarUrl));
       } catch {
-        // ignore
+        setSubmitError('Nao foi possivel carregar o perfil.');
       } finally {
         setLoading(false);
       }
@@ -109,8 +109,12 @@ export default function ProfilePage() {
         canvas.height = size;
         ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
         canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.9);
+        URL.revokeObjectURL(img.src);
       };
-      img.onerror = () => resolve(null);
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        resolve(null);
+      };
       img.src = URL.createObjectURL(file);
     });
   }

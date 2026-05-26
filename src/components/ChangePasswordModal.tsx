@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -39,10 +39,51 @@ export default function ChangePasswordModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const titleId = 'change-password-title';
 
   const { register, handleSubmit, reset } = useForm<Form>({ resolver: zodResolver(schema) });
 
+  useEffect(() => {
+    if (!open) return;
+
+    const timer = window.setTimeout(() => {
+      const focusable = panelRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      focusable?.[0]?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
   if (!open) return null;
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      onClose();
+      return;
+    }
+
+    if (event.key !== 'Tab') return;
+
+    const focusable = panelRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    if (!focusable || focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   const onSubmit = async (data: Form) => {
     setLoading(true);
@@ -63,10 +104,18 @@ export default function ChangePasswordModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onKeyDown={handleKeyDown}
+    >
+      <div className="w-full max-w-md" ref={panelRef}>
         <Card>
-          <h3 className="mb-4 text-lg font-semibold">Alterar senha</h3>
+          <h3 id={titleId} className="mb-4 text-lg font-semibold">
+            Alterar senha
+          </h3>
           {error && <Alert type="error">{error}</Alert>}
           {success && <Alert type="success">{success}</Alert>}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">

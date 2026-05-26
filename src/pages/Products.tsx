@@ -135,6 +135,7 @@ export default function ProductsPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewSource, setPreviewSource] = useState<string | null>(null);
   const [optionGroups, setOptionGroups] = useState<ProductOptionGroupForm[]>([]);
   const {
     register,
@@ -179,6 +180,8 @@ export default function ProductsPage() {
 
       setProducts(nextProducts);
       setCategories(nextCategories);
+    } catch {
+      setSubmitError('Nao foi possivel carregar produtos e categorias.');
     } finally {
       if (!hasCache) {
         setLoading(false);
@@ -189,6 +192,20 @@ export default function ProductsPage() {
   useEffect(() => {
     void loadData();
   }, []);
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setPreviewSource(null);
+      return undefined;
+    }
+
+    const objectUrl = URL.createObjectURL(selectedFile);
+    setPreviewSource(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedFile]);
 
   useEffect(() => {
     if (editingProduct) {
@@ -339,8 +356,6 @@ export default function ProductsPage() {
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSelectedFile(event.target.files?.[0] ?? null);
   };
-
-  const previewSource = selectedFile ? URL.createObjectURL(selectedFile) : null;
 
   const categoryOptions = categories.map((cat) => ({
     value: cat.id,

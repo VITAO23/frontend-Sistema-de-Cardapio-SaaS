@@ -133,8 +133,12 @@ async function processImageToJpeg(file: File, size = 400) {
       canvas.height = size;
       ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
       canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.9);
+      URL.revokeObjectURL(img.src);
     };
-    img.onerror = () => resolve(null);
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src);
+      resolve(null);
+    };
     img.src = URL.createObjectURL(file);
   });
 }

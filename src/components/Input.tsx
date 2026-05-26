@@ -7,14 +7,20 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export default function Input({ label, error, helperText, className, ...props }: InputProps) {
+  const inputId = props.id ?? props.name;
+
   return (
     <div className="space-y-1">
       {label ? (
-        <label className="block text-xs font-semibold uppercase tracking-wide text-ink-500">
+        <label
+          htmlFor={inputId}
+          className="block text-xs font-semibold uppercase tracking-wide text-ink-500"
+        >
           {label}
         </label>
       ) : null}
       <input
+        id={inputId}
         className={`
           w-full rounded-xl border border-ink-200 bg-white
           px-4 py-3 text-sm text-ink-900 outline-none

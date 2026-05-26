@@ -41,6 +41,7 @@ Crie um `.env` na raiz:
 ```env
 VITE_API_URL=http://localhost:3333
 ```
+Use como base o arquivo `.env.example`.
 
 ### 3. Rodar em desenvolvimento
 ```bash

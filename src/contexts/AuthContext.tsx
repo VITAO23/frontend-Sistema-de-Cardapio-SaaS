@@ -113,13 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [syncSessionState]);
 
   const login = useCallback(async ({ email, password }: LoginInput) => {
-    // Log request payload for debugging
-    const payload = { email, password };
-    // eslint-disable-next-line no-console
-    console.log('[Auth] login payload:', payload);
-
     try {
-      const response = await api.post(API_ENDPOINTS.LOGIN, payload);
+      const response = await api.post(API_ENDPOINTS.LOGIN, { email, password });
       const { token: nextToken, user: nextUser } = response.data as SessionResponse;
 
       if (!nextToken || !nextUser) {

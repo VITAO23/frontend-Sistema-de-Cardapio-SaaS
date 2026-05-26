@@ -15,14 +15,20 @@ export default function Select({
   className,
   ...props
 }: SelectProps) {
+  const selectId = props.id ?? props.name;
+
   return (
     <div className="space-y-1">
       {label ? (
-        <label className="block text-xs font-semibold uppercase tracking-wide text-ink-500">
+        <label
+          htmlFor={selectId}
+          className="block text-xs font-semibold uppercase tracking-wide text-ink-500"
+        >
           {label}
         </label>
       ) : null}
       <select
+        id={selectId}
         className={`
           w-full rounded-xl border border-ink-200 bg-white
           px-4 py-3 text-sm text-ink-900 outline-none
