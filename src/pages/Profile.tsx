@@ -37,6 +37,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(() => !readCache<{ name?: string; email?: string; avatarUrl?: string | null }>('users/me'));
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<ProfileForm | null>(null);
@@ -55,6 +56,7 @@ export default function ProfilePage() {
       }
 
       try {
+        setLoadError(null);
         const user = await cachedRequest<{ name?: string; email?: string; avatarUrl?: string | null }>('users/me', async () => {
           const res = await api.get(API_ENDPOINTS.USERS_ME);
           return res.data;
@@ -71,7 +73,7 @@ export default function ProfilePage() {
 
         if (user.avatarUrl) setAvatarPreview(resolveMediaUrl(user.avatarUrl));
       } catch {
-        setSubmitError('Nao foi possivel carregar o perfil.');
+        setLoadError('Não foi possível carregar o perfil.');
       } finally {
         setLoading(false);
       }
@@ -175,6 +177,8 @@ export default function ProfilePage() {
             )}
           </div>
 
+          {loadError ? <Alert type="error">{loadError}</Alert> : null}
+
           <div className="grid gap-4 p-4 md:grid-cols-2">
             <Input label="Nome" {...register('name')} disabled={isLocked} />
             <Input label="Email" type="email" {...register('email')} disabled={isLocked} />
@@ -185,7 +189,7 @@ export default function ProfilePage() {
               <AvatarUploader
                 initialUrl={avatarPreview}
                 onChange={onAvatarChange}
-                label="Foto do usuario"
+                label="Foto do usuário"
                 inputId="user-avatar"
                 disabled={isLocked}
               />

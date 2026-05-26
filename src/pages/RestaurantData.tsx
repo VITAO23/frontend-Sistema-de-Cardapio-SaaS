@@ -236,11 +236,11 @@ export default function RestaurantDataPage() {
 
     printWindow.document.write(`
       <html>
-        <head><title>QR Code Cardapio</title></head>
+        <head><title>QR Code Cardápio</title></head>
         <body style="font-family: sans-serif; text-align: center; padding: 24px;">
-          <h2>QR Code do Cardapio</h2>
+          <h2>QR Code do Cardápio</h2>
           <p>${publicMenuUrl}</p>
-          <img src="${qrCodeDataUrl}" alt="QR Code do cardapio" style="width: 320px; height: 320px;" />
+          <img src="${qrCodeDataUrl}" alt="QR Code do cardápio" style="width: 320px; height: 320px;" />
         </body>
       </html>
     `);
@@ -340,7 +340,7 @@ export default function RestaurantDataPage() {
   return (
     <Section
       title="Dados do Restaurante"
-      subtitle="Configure o cadastro e as informacoes exibidas no cardapio"
+      subtitle="Configure o cadastro e as informações exibidas no cardápio"
     >
       <Card>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-4">
@@ -416,7 +416,7 @@ export default function RestaurantDataPage() {
               />
 
               <Input
-                label="Horarios"
+                label="Horários"
                 placeholder="ex: Seg - Dom | 18:00 - 23:00"
                 disabled={isFormLocked}
                 {...register('openingHours')}
@@ -433,14 +433,14 @@ export default function RestaurantDataPage() {
               </label>
 
               <Input
-                label="Entrega (tempo medio)"
+                label="Entrega (tempo médio)"
                 placeholder="00 - 00 min"
                 disabled={isFormLocked}
                 {...register('deliveryTime')}
               />
 
               <Input
-                label="Retirada (tempo medio)"
+                label="Retirada (tempo médio)"
                 placeholder="00 - 00 min"
                 disabled={isFormLocked}
                 {...register('pickupTime')}
@@ -475,7 +475,7 @@ export default function RestaurantDataPage() {
               />
             </div>
             <p className="mt-2 text-xs text-ink-500">
-              Estas informacoes aparecem no cardapio publico.
+              Estas informações aparecem no cardápio público.
             </p>
           </div>
 
@@ -507,9 +507,9 @@ export default function RestaurantDataPage() {
       <Card className="p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="w-full space-y-3 lg:max-w-xl">
-            <h3 className="text-lg font-semibold text-ink-900">QR Code do Cardapio</h3>
+            <h3 className="text-lg font-semibold text-ink-900">QR Code do Cardápio</h3>
             <p className="text-sm text-ink-600">
-              Compartilhe este QR code com seus clientes para eles acessarem o cardapio online.
+              Compartilhe este QR code com seus clientes para eles acessarem o cardápio online.
             </p>
 
             <div className="rounded-xl border border-ink-200 bg-ink-50 px-4 py-3 text-sm text-ink-700">
@@ -532,7 +532,7 @@ export default function RestaurantDataPage() {
           <div className="flex w-full justify-center lg:w-auto lg:justify-end">
             <div className="rounded-2xl border border-ink-200 bg-white p-4 shadow-sm">
               {qrCodeDataUrl ? (
-                <img src={qrCodeDataUrl} alt="QR Code do cardapio" className="h-48 w-48" />
+                <img src={qrCodeDataUrl} alt="QR Code do cardápio" className="h-48 w-48" />
               ) : (
                 <div className="flex h-48 w-48 items-center justify-center text-sm text-ink-500">
                   Gerando QR Code...

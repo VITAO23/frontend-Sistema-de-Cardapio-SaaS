@@ -18,13 +18,13 @@ export default function AppLayout() {
         <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-ink-200 bg-white/80 px-6 py-4 shadow-[0_18px_45px_rgba(31,41,55,0.08)] backdrop-blur">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">
-              Sistema de Cardapio
+              Sistema de Cardápio
             </p>
             <h1 className="text-2xl font-semibold text-ink-900">Painel administrativo</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="rounded-2xl border border-ink-200 bg-ink-50 px-4 py-2 text-xs text-ink-600">
-              {user?.email || 'Usuario autenticado'}
+              {user?.email || 'Usuário autenticado'}
             </div>
             <button
               type="button"

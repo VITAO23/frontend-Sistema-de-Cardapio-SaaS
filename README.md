@@ -62,6 +62,8 @@ npm run preview
    - Backend retorna `{ token, user }`
    - Token salvo em `localStorage`
 
+> Nota de segurança: para produção, considere migrar o token para cookies HttpOnly com refresh token no backend.
+
 2. **Interceptor automático**
    - Todo request adiciona `Authorization: Bearer <token>`
    - Token expirado: erro 401 (backend)

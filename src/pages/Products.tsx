@@ -132,6 +132,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(
     () => !(readCache<Product[]>('products') && readCache<Category[]>('categories')),
   );
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -167,6 +168,7 @@ export default function ProductsPage() {
     }
 
     try {
+      setLoadError(null);
       const [nextProducts, nextCategories] = await Promise.all([
         cachedRequest('products', async () => {
           const productsResponse = await api.get(API_ENDPOINTS.PRODUCTS);
@@ -181,7 +183,7 @@ export default function ProductsPage() {
       setProducts(nextProducts);
       setCategories(nextCategories);
     } catch {
-      setSubmitError('Nao foi possivel carregar produtos e categorias.');
+      setLoadError('Não foi possível carregar produtos e categorias.');
     } finally {
       if (!hasCache) {
         setLoading(false);
@@ -304,7 +306,7 @@ export default function ProductsPage() {
       setOptionGroups([]);
       await loadData();
     } catch {
-      setSubmitError('Nao foi possivel salvar o produto.');
+      setSubmitError('Não foi possível salvar o produto.');
     }
   };
 
@@ -349,7 +351,7 @@ export default function ProductsPage() {
       invalidateCache('products');
       await loadData();
     } catch {
-      setSubmitError('Nao foi possivel excluir o produto.');
+      setSubmitError('Não foi possível excluir o produto.');
     }
   };
 
@@ -623,6 +625,12 @@ export default function ProductsPage() {
           <h3 className="text-lg font-semibold text-ink-900">Produtos cadastrados</h3>
           <Badge variant="success">{products.length}</Badge>
         </div>
+
+        {loadError ? (
+          <Alert type="error" title="Erro ao carregar">
+            {loadError}
+          </Alert>
+        ) : null}
 
         {loading ? (
           <Card className="p-8 text-center">

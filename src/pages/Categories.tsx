@@ -20,6 +20,7 @@ type Category = {
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>(() => readCache<Category[]>('categories') ?? []);
   const [loading, setLoading] = useState(() => !readCache<Category[]>('categories'));
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const {
@@ -40,12 +41,15 @@ export default function CategoriesPage() {
     }
 
     try {
+      setLoadError(null);
       const list = await cachedRequest('categories', async () => {
         const response = await api.get(API_ENDPOINTS.CATEGORIES);
         const data = response.data as { categories?: Category[] } | Category[];
         return Array.isArray(data) ? data : data.categories ?? [];
       });
       setCategories(list);
+    } catch {
+      setLoadError('Não foi possível carregar as categorias.');
     } finally {
       if (!hasCache) {
         setLoading(false);
@@ -142,6 +146,12 @@ export default function CategoriesPage() {
           <h3 className="text-lg font-semibold text-ink-900">Categorias cadastradas</h3>
           <Badge variant="success">{categories.length}</Badge>
         </div>
+
+        {loadError ? (
+          <Alert type="error" title="Erro ao carregar">
+            {loadError}
+          </Alert>
+        ) : null}
 
         {loading ? (
           <Card className="p-8 text-center">

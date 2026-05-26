@@ -197,6 +197,7 @@ function hydrateRestaurantOptionGroups(restaurant: Restaurant): Restaurant {
 export default function PublicMenu() {
   const { slug } = useParams<{ slug: string }>();
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [isDemo, setIsDemo] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
@@ -221,6 +222,7 @@ export default function PublicMenu() {
 
     setLoading(true);
     setIsDemo(false);
+    setLoadError(null);
 
     void api
       .get(`/restaurants/${slug}`)
@@ -229,10 +231,12 @@ export default function PublicMenu() {
         if (error?.response?.status === 404) {
           setRestaurant(hydrateRestaurantOptionGroups(createDemoRestaurant(slug)));
           setIsDemo(true);
+          setLoadError(null);
           return;
         }
 
         setRestaurant(null);
+        setLoadError('Não foi possível carregar o cardápio. Tente novamente.');
       })
       .finally(() => setLoading(false));
   }, [slug]);
@@ -471,7 +475,31 @@ export default function PublicMenu() {
   }
 
   if (loading) return <div className="p-6">Carregando...</div>;
-  if (!restaurant) return <div className="p-6">Restaurante não encontrado.</div>;
+  if (loadError)
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(110,231,183,0.18),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(167,139,250,0.12),_transparent_24%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_100%)]">
+        <div className="mx-auto max-w-3xl px-4 py-12">
+          <Card className="p-6 text-center">
+            <h2 className="text-2xl font-bold text-ink-900">Ops! Algo deu errado.</h2>
+            <p className="mt-2 text-sm text-ink-600">{loadError}</p>
+            <Button className="mt-6" onClick={() => window.location.reload()}>
+              Tentar novamente
+            </Button>
+          </Card>
+        </div>
+      </div>
+    );
+  if (!restaurant)
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(110,231,183,0.18),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(167,139,250,0.12),_transparent_24%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_100%)]">
+        <div className="mx-auto max-w-3xl px-4 py-12">
+          <Card className="p-6 text-center">
+            <h2 className="text-2xl font-bold text-ink-900">Restaurante não encontrado.</h2>
+            <p className="mt-2 text-sm text-ink-600">Verifique o link ou tente novamente.</p>
+          </Card>
+        </div>
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(110,231,183,0.18),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(167,139,250,0.12),_transparent_24%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_100%)]">
@@ -583,11 +611,11 @@ export default function PublicMenu() {
                   <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 shadow-sm backdrop-blur">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-200">Retirada</p>
                     <p className="mt-2 text-base font-semibold text-white">{pickupTime}</p>
-                    <p className="mt-1 text-xs text-ink-100">Retire no balcao conforme disponibilidade.</p>
+                    <p className="mt-1 text-xs text-ink-100">Retire no balcão conforme disponibilidade.</p>
                   </div>
 
                   <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 shadow-sm backdrop-blur">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-200">Horarios</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-200">Horários</p>
                     <p className="mt-2 text-base font-semibold text-white">{openingHours}</p>
                     <p className="mt-1 text-xs text-ink-100">
                       {isOpen ? 'Estamos atendendo agora.' : 'Estamos fechados no momento.'}
@@ -599,7 +627,7 @@ export default function PublicMenu() {
 
             <div className="border-t border-ink-200 bg-gradient-to-br from-white via-ink-50 to-mint-50 p-5 lg:border-l lg:border-t-0 md:p-8">
               <div className="inline-flex rounded-full border border-ink-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-ink-600 shadow-sm">
-                Acoes rapidas
+                Ações rápidas
               </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
